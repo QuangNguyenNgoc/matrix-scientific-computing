@@ -1,0 +1,19 @@
+# environment
+venv/
+.env
+
+# python
+__pycache__/
+*.pyc
+*.pyo
+
+# jupyter
+.ipynb_checkpoints/
+
+# Manim render
+media/
+*.mp4
+
+# IDE/system dumb file
+.DS_Store
+.vscode/
