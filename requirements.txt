@@ -1,5 +1,5 @@
 # ========================================
-# requirements.txt — Windows (Python 3.10)
+# requirements.txt — Windows (Python 3.11)
 # Dành cho: tất cả thành viên
 # Cài đặt: pip install -r requirements.txt
 # ========================================
