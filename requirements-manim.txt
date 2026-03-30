@@ -1,0 +1,15 @@
+# =============================================
+# requirements-manim.txt — WSL/Linux (Python 3.10)
+# Dành cho: người render Manim (WSL)
+# Cài đặt: pip install -r requirements-manim.txt
+# =============================================
+
+# --- Kế thừa toàn bộ từ requirements.txt ---
+-r requirements.txt
+
+# --- Manim render engine ---
+manim==0.18.1
+
+# --- LaTeX (cần cài riêng ngoài pip, xem README) ---
+# sudo apt install texlive texlive-latex-extra
+# sudo apt install ffmpeg   ← bắt buộc với manim 0.18.1
