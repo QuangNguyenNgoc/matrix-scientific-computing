@@ -38,6 +38,8 @@ venv\Scripts\activate
 pip install -r requirements.txt
 ```
 
+! Nếu gặp lỗi "cannot be loaded because ... this system", coi phần Troubleshooting.
+
 Kiểm tra nhanh:
 
 ```bash
@@ -90,9 +92,7 @@ py -3.11 -m venv venv
 
 ### PowerShell chặn script
 
-- Sử dụng lệnh này mỗi lần khởi động terminal.
-
 ```bash
-Set-ExecutionPolicy -Scope CurrentUser RemoteSigned
+Set-ExecutionPolicy -ExecutionPolicy RemoteSigned -Scope CurrentUser -Force
 venv\Scripts\Activate.ps1
 ```
