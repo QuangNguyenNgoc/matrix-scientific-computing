@@ -4,15 +4,13 @@
 # Cài đặt: pip install -r requirements.txt
 # ========================================
 
-# --- Tính toán & kiểm chứng ---
+# --- Verification / comparison only ---
 numpy==1.26.4
 scipy==1.11.4
 sympy==1.12
 
-# --- Trực quan hóa ---
+# --- Plotting / analysis ---
 matplotlib==3.8.4
 
-# --- Trình bày kết quả ---
-jupyter==1.0.0
-notebook==7.1.3
-ipykernel==6.29.4
+# --- Notebook kernel ---
+ipykernel==6.29.5
