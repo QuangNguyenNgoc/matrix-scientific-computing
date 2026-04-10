@@ -2,62 +2,57 @@ from __future__ import annotations
 
 from typing import Dict, List, Sequence, Tuple, Union, Any
 
-Number = Union[int, float]
-Matrix = List[List[float]]
-Vector = List[float]
+from .utils import (
+    Number,
+    Matrix,
+    Vector,
+    _to_matrix,
+    _to_vector,
+    _shape,
+    _copy_matrix,
+    _identity,
+    _clean_small_entries,
+    _augment,
+    _swap_rows,
+)
+
+"""
+Các nội dung trong file này:
+- khử tiến để đưa ma trận tăng cường về REF
+- thế ngược cho hệ tam giác trên
+- dựng RREF để phân loại hệ
+- biểu diễn nghiệm tổng quát khi hệ có vô số nghiệm
+"""
 
 
-def _to_matrix(A: Sequence[Sequence[Number]]) -> Matrix:
-    if not A:
-        raise ValueError("Matrix A must not be empty.")
-    matrix = [list(map(float, row)) for row in A]
-    row_length = len(matrix[0])
-    if row_length == 0:
-        raise ValueError("Matrix A must have at least one column.")
-    for row in matrix:
-        if len(row) != row_length:
-            raise ValueError("Matrix A must be rectangular.")
-    return matrix
+def back_substitution(U: Sequence[Sequence[Number]], c: Sequence[Number], eps: float = 1e-12) -> Vector:
+    """
+    Giải hệ tam giác trên Ux = c.
 
+    Đầu vào:
+    - U: ma trận tam giác trên
+    - c: vector vế phải
+    - eps: ngưỡng nhận diện số gần bằng 0
 
-def _to_vector(b: Sequence[Number]) -> Vector:
-    if not b:
-        raise ValueError("Vector b must not be empty.")
-    return [float(value) for value in b]
+    Đầu ra:
+    - vector nghiệm x
+    """
+    upper = _to_matrix(U)
+    rhs = _to_vector(c)
+    n, m = _shape(upper)
+    if n != m:
+        raise ValueError("U must be a square matrix.")
+    if len(rhs) != n:
+        raise ValueError("U and c must have compatible dimensions.")
 
+    x = [0.0] * n
+    for i in range(n - 1, -1, -1):
+        if abs(upper[i][i]) <= eps:
+            raise ValueError("Back substitution failed because a diagonal pivot is zero.")
+        subtotal = sum(upper[i][j] * x[j] for j in range(i + 1, n))
+        x[i] = (rhs[i] - subtotal) / upper[i][i]
 
-def _shape(A: Matrix) -> Tuple[int, int]:
-    return len(A), len(A[0])
-
-
-def _copy_matrix(A: Matrix) -> Matrix:
-    return [row[:] for row in A]
-
-
-def _identity(n: int) -> Matrix:
-    return [[1.0 if i == j else 0.0 for j in range(n)] for i in range(n)]
-
-
-def _is_close(value: float, target: float = 0.0, eps: float = 1e-12) -> bool:
-    return abs(value - target) <= eps
-
-
-def _clean_small_entries(A: Matrix, eps: float = 1e-12) -> Matrix:
-    for i in range(len(A)):
-        for j in range(len(A[0])):
-            if abs(A[i][j]) <= eps:
-                A[i][j] = 0.0
-    return A
-
-
-def _augment(A: Matrix, b: Vector) -> Matrix:
-    if len(A) != len(b):
-        raise ValueError("A and b must have the same number of rows.")
-    return [A[i][:] + [b[i]] for i in range(len(A))]
-
-
-def _swap_rows(M: Matrix, i: int, j: int) -> None:
-    M[i], M[j] = M[j], M[i]
+    return [0.0 if abs(value) <= eps else value for value in x]
 
 
 def _forward_elimination_ref(
@@ -144,12 +139,6 @@ def _rref(M: Matrix, eps: float = 1e-12) -> Tuple[Matrix, List[int]]:
     return _clean_small_entries(rref, eps), pivot_columns
 
 
-def _extract_upper_system(ref_augmented: Matrix, n: int) -> Tuple[Matrix, Vector]:
-    U = [row[:n] for row in ref_augmented[:n]]
-    c = [row[n] for row in ref_augmented[:n]]
-    return U, c
-
-
 def _build_general_solution_from_rref(
     rref_augmented: Matrix,
     variable_count: int,
@@ -191,23 +180,35 @@ def _build_general_solution_from_rref(
     }
 
 
-def back_substitution(U: Sequence[Sequence[Number]], c: Sequence[Number], eps: float = 1e-12) -> Vector:
-    upper = _to_matrix(U)
-    rhs = _to_vector(c)
-    n, m = _shape(upper)
-    if n != m:
-        raise ValueError("U must be a square matrix.")
-    if len(rhs) != n:
-        raise ValueError("U and c must have compatible dimensions.")
+def _extract_upper_system(
+    ref_augmented: Matrix,
+    variable_count: int,
+    eps: float = 1e-12,
+) -> Tuple[Matrix, Vector]:
+    """
+    Tách ma trận tăng cường ở dạng REF thành ma trận tam giác trên U và vector vế phải c để dùng cho back_substitution.
+    """
+    rows, cols = _shape(ref_augmented)
 
-    x = [0.0] * n
-    for i in range(n - 1, -1, -1):
-        if abs(upper[i][i]) <= eps:
-            raise ValueError("Back substitution failed because a diagonal pivot is zero.")
-        subtotal = sum(upper[i][j] * x[j] for j in range(i + 1, n))
-        x[i] = (rhs[i] - subtotal) / upper[i][i]
+    if cols != variable_count + 1:
+        raise ValueError("The augmented matrix must have exactly variable_count + 1 columns.")
+    if rows < variable_count:
+        raise ValueError("Not enough rows to extract a square upper-triangular system.")
 
-    return [0.0 if abs(value) <= eps else value for value in x]
+    U: Matrix = []
+    c_vector: Vector = []
+
+    for i in range(variable_count):
+        row = [
+            0.0 if abs(ref_augmented[i][j]) <= eps else ref_augmented[i][j]
+            for j in range(variable_count)
+        ]
+        rhs_value = 0.0 if abs(ref_augmented[i][-1]) <= eps else ref_augmented[i][-1]
+
+        U.append(row)
+        c_vector.append(rhs_value)
+
+    return U, c_vector
 
 
 def gaussian_eliminate(
@@ -215,6 +216,27 @@ def gaussian_eliminate(
     b: Sequence[Number],
     eps: float = 1e-12,
 ) -> Tuple[Matrix, Dict[str, Any], int]:
+    """
+    Giải hệ Ax = b bằng phép khử Gauss.
+
+    Đầu vào:
+    - A: ma trận hệ số kích thước m x n
+    - b: vector vế phải kích thước m
+    - eps: ngưỡng nhận diện số gần bằng 0
+
+    Đầu ra:
+    - ref_augmented: ma trận tăng cường sau khi khử về REF
+    - solution_info: thông tin mô tả loại nghiệm
+    - swap_count: số lần đổi dòng
+
+    solution_info có thể thuộc một trong ba dạng:
+    1. unique:
+       {"type": "unique", "x": [...], "pivot_columns": [...]}
+    2. infinite:
+       {"type": "infinite", "particular": [...], "nullspace_basis": [...], ...}
+    3. inconsistent:
+       {"type": "inconsistent", "message": "...", "pivot_columns": [...]}
+    """
     matrix = _to_matrix(A)
     rhs = _to_vector(b)
     rows, cols = _shape(matrix)
@@ -239,7 +261,10 @@ def gaussian_eliminate(
             }, swap_count
 
     if cols == rows and rank_A == cols:
-        U, c_vector = _extract_upper_system(ref_augmented, cols)
+        # Tách hệ tam giác trên Ux = c từ ma trận tăng cường sau khi khử
+        U, c_vector = _extract_upper_system(ref_augmented, cols, eps=eps)
+
+        # Giải hệ tam giác trên
         x = back_substitution(U, c_vector, eps=eps)
         return ref_augmented, {
             "type": "unique",
@@ -256,135 +281,3 @@ def gaussian_eliminate(
     )
     solution_info["rref_augmented"] = rref_augmented
     return ref_augmented, solution_info, swap_count
-
-
-def determinant(A: Sequence[Sequence[Number]], eps: float = 1e-12) -> float:
-    matrix = _to_matrix(A)
-    rows, cols = _shape(matrix)
-    if rows != cols:
-        raise ValueError("determinant(A) requires a square matrix.")
-
-    ref_matrix, swap_count, _ = _forward_elimination_ref(matrix, eps=eps, pivot_limit=cols)
-    det = (-1.0 if swap_count % 2 else 1.0)
-    for i in range(rows):
-        det *= ref_matrix[i][i]
-
-    return 0.0 if abs(det) <= eps else det
-
-
-def inverse(A: Sequence[Sequence[Number]], eps: float = 1e-12) -> Matrix:
-    matrix = _to_matrix(A)
-    n, m = _shape(matrix)
-    if n != m:
-        raise ValueError("inverse(A) requires a square matrix.")
-
-    augmented = [matrix[i] + _identity(n)[i] for i in range(n)]
-
-    pivot_row = 0
-    for col in range(n):
-        best_row = max(range(pivot_row, n), key=lambda r: abs(augmented[r][col]))
-        if abs(augmented[best_row][col]) <= eps:
-            raise ValueError("Matrix is singular, so it does not have an inverse.")
-
-        if best_row != pivot_row:
-            _swap_rows(augmented, pivot_row, best_row)
-
-        pivot = augmented[pivot_row][col]
-        for j in range(2 * n):
-            augmented[pivot_row][j] /= pivot
-        augmented[pivot_row][col] = 1.0
-
-        for r in range(n):
-            if r == pivot_row:
-                continue
-            factor = augmented[r][col]
-            if abs(factor) <= eps:
-                augmented[r][col] = 0.0
-                continue
-            for j in range(2 * n):
-                augmented[r][j] -= factor * augmented[pivot_row][j]
-            augmented[r][col] = 0.0
-
-        pivot_row += 1
-
-    inverse_matrix = [row[n:] for row in _clean_small_entries(augmented, eps)]
-    return inverse_matrix
-
-
-def rank_and_basis(A: Sequence[Sequence[Number]], eps: float = 1e-12) -> Dict[str, Any]:
-    matrix = _to_matrix(A)
-    rows, cols = _shape(matrix)
-    rref_matrix, pivot_columns = _rref(matrix, eps=eps)
-    rank = len(pivot_columns)
-    free_columns = [j for j in range(cols) if j not in pivot_columns]
-
-    column_space_basis = []
-    for pivot_col in pivot_columns:
-        column_space_basis.append([matrix[i][pivot_col] for i in range(rows)])
-
-    row_space_basis = []
-    for row in rref_matrix:
-        if any(abs(value) > eps for value in row):
-            row_space_basis.append(row[:])
-
-    null_space_basis: List[Vector] = []
-    for free_col in free_columns:
-        vector = [0.0] * cols
-        vector[free_col] = 1.0
-        for row_index, pivot_col in enumerate(pivot_columns):
-            vector[pivot_col] = -rref_matrix[row_index][free_col]
-        null_space_basis.append([0.0 if abs(v) <= eps else v for v in vector])
-
-    return {
-        "rank": rank,
-        "pivot_columns": pivot_columns,
-        "free_columns": free_columns,
-        "rref": rref_matrix,
-        "column_space_basis": column_space_basis,
-        "row_space_basis": row_space_basis,
-        "null_space_basis": null_space_basis,
-    }
-
-
-def verify_solution(
-    A: Sequence[Sequence[Number]],
-    x: Union[Sequence[Number], Dict[str, Any]],
-    b: Sequence[Number],
-    tol: float = 1e-9,
-) -> Dict[str, Any]:
-    import numpy as np
-
-    matrix = np.array(A, dtype=float)
-    rhs = np.array(b, dtype=float)
-
-    if isinstance(x, dict):
-        if x.get("type") == "unique":
-            candidate = np.array(x["x"], dtype=float)
-        elif x.get("type") == "infinite":
-            candidate = np.array(x["particular"], dtype=float)
-        else:
-            raise ValueError("Cannot verify an inconsistent system because no solution vector exists.")
-    else:
-        candidate = np.array(x, dtype=float)
-
-    residual = matrix @ candidate - rhs
-    residual_norm = float(np.linalg.norm(residual))
-    rhs_norm = float(np.linalg.norm(rhs))
-    relative_residual = residual_norm / rhs_norm if rhs_norm > 0 else residual_norm
-
-    return {
-        "is_close": bool(np.allclose(matrix @ candidate, rhs, atol=tol, rtol=tol)),
-        "residual_norm": residual_norm,
-        "relative_residual": relative_residual,
-        "numpy_solution": np.linalg.lstsq(matrix, rhs, rcond=None)[0].tolist(),
-    }
-
-
-__all__ = [
-    "gaussian_eliminate",
-    "back_substitution",
-    "determinant",
-    "inverse",
-    "rank_and_basis",
-    "verify_solution",
-]

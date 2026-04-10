@@ -2,10 +2,10 @@ from __future__ import annotations
 
 import math
 
-from gaussian import (
+from part1 import (
+    gaussian_eliminate,
     back_substitution,
     determinant,
-    gaussian_eliminate,
     inverse,
     rank_and_basis,
     verify_solution,
