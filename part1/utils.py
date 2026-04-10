@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from typing import List, Sequence, Union, Tuple
+from typing import Any, List, Sequence, Union, Tuple
 
 Number = Union[int, float]
 Matrix = List[List[float]]
