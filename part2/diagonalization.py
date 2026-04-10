@@ -29,7 +29,7 @@ def matrixTranspose(matrix):
 
 def gaussInverse(matrix):
     n = len(matrix)
-    augMat = [row[:] + [1.0 if i == j else 0.0 for step in range(n)] for i, row in enumerate(matrix)]
+    augMat = [row[:] + [1.0 if i == j else 0.0 for j in range(n)] for i, row in enumerate(matrix)]
     for i in range(n):
         pivot = augMat[i][i]
         if abs(pivot) < 1e-9:
