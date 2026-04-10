@@ -83,13 +83,13 @@ def findRoots(coeffs):
 def gaussBasis(matrix, ev):
     # Cài đặt thuật toán khử Gauss trên (A - lambda * I)x = 0 để lấy không gian nghiệm
     n = len(matrix)
-    matM = [[matrix[i][j] - (ev if i == j else 0.0) for j in range(n)] for i in range(n)]
-    pivotCols = []
+    aug = [[matrix[i][j] - (ev if i == j else 0.0) for j in range(n)] for i in range(n)]
+    
     lead = 0
-    aug = [row[:] for row in matM]
-    for r in range(n):
-        if lead >= n:
-            break
+    pivotCols = []
+    pivotRows = []
+    r = 0
+    while r < n and lead < n:
         maxVal = 0.0
         maxIdx = r
         for i in range(r, n):
@@ -101,6 +101,7 @@ def gaussBasis(matrix, ev):
             continue
         aug[maxIdx], aug[r] = aug[r], aug[maxIdx]
         pivotCols.append(lead)
+        pivotRows.append(r)
         lv = aug[r][lead]
         for j in range(n):
             aug[r][j] /= lv
@@ -109,24 +110,48 @@ def gaussBasis(matrix, ev):
                 lv = aug[i][lead]
                 for j in range(n):
                     aug[i][j] -= lv * aug[r][j]
+        r += 1
         lead += 1
+        
     freeCols = [j for j in range(n) if j not in pivotCols]
     if not freeCols:
         if pivotCols:
             pivotCols.pop()
+            pivotRows.pop()
         freeCols.append(n - 1)
+        
     basis = []
     for f in freeCols:
         v = [0.0] * n
         v[f] = 1.0
-        for rIdx, pCol in enumerate(pivotCols):
-            if rIdx < n:
-                v[pCol] = -aug[rIdx][f]
+        for i, pCol in enumerate(pivotCols):
+            rIdx = pivotRows[i]
+            v[pCol] = -aug[rIdx][f]
+        basis.append(v)
+        
+    ortho_basis = []
+    for v in basis:
+        for u in ortho_basis:
+            dot_uv = sum(x*y for x, y in zip(v, u))
+            v = [x - dot_uv * y for x, y in zip(v, u)]
         norm = math.sqrt(sum(x*x for x in v))
         if norm > 1e-9:
             v = [x/norm for x in v]
-        basis.append(v)
-    return basis
+            ortho_basis.append(v)
+            
+    while len(ortho_basis) < len(freeCols):
+        extraV = [0.0] * n
+        for i in range(n):
+            extraV[i] = 1.0 if len(ortho_basis) == i else 0.0
+        for u in ortho_basis:
+            dot_uv = sum(x*y for x, y in zip(extraV, u))
+            extraV = [x - dot_uv * y for x, y in zip(extraV, u)]
+        norm = math.sqrt(sum(x*x for x in extraV))
+        if norm > 1e-9:
+            extraV = [x/norm for x in extraV]
+            ortho_basis.append(extraV)
+            
+    return ortho_basis
 
 def findEigen(matrix):
     # Detect bậc

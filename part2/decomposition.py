@@ -17,6 +17,26 @@ def svdDecomp(matA):
         colV = getColumn(matV, i)
         evPairs.append((evs[i], colV))
     evPairs.sort(key=lambda x: x[0], reverse=True)
+    
+    ortho_V_cols = []
+    for i in range(n):
+        v = list(evPairs[i][1])
+        for u in ortho_V_cols:
+            dot_uv = sum(x*y for x, y in zip(v, u))
+            v = [x - dot_uv * y for x, y in zip(v, u)]
+        norm = math.sqrt(sum(x*x for x in v))
+        if norm > 1e-9:
+            v = [x/norm for x in v]
+        else:
+            v = [1.0 if j == i else 0.0 for j in range(n)]
+            for u in ortho_V_cols:
+                dot_uv = sum(x*y for x, y in zip(v, u))
+                v = [x - dot_uv * y for x, y in zip(v, u)]
+            norm = math.sqrt(sum(x*x for x in v))
+            if norm > 1e-9: v = [x/norm for x in v]
+        ortho_V_cols.append(v)
+        evPairs[i] = (evPairs[i][0], v)
+
     singularVals = []
     matVSorted = [[0.0 for col in range(n)] for row in range(n)]
     # Lấy các giá trị kỳ dị bằng căn bậc 2 của các trị riêng dương
@@ -73,7 +93,6 @@ def verifySvd(matA, matU, matSigma, matVT):
     # So sánh các giá trị kỳ dị (chỉ lưu min(m, n) phần tử)
     mySingularVals = [matSigma[i][i] for i in range(min(len(matA), len(matA[0])))]
     errSv = np.max(np.abs(np.array(mySingularVals) - arrS))
-    
     print(f"Sai số giá trị kỳ dị so với NumPy = {errSv:.2e}")
     return maxError < 1e-4 and errSv < 1e-4
 
