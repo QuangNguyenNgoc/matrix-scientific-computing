@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import pytest
-
 from part1 import (
     back_substitution,
     determinant,
@@ -132,8 +130,11 @@ def test_determinant_singular():
 
 def test_determinant_non_square_raises():
     A = [[1, 2, 3], [4, 5, 6]]
-    with pytest.raises(ValueError, match="square matrix"):
+    try:
         determinant(A)
+        assert False, "Expected ValueError for non-square matrix"
+    except ValueError as e:
+        assert "square matrix" in str(e)
 
 
 def test_inverse_2x2():
@@ -152,8 +153,11 @@ def test_inverse_identity_check():
 
 def test_inverse_singular_raises():
     A = [[1, 2], [2, 4]]
-    with pytest.raises(ValueError, match="singular"):
+    try:
         inverse(A)
+        assert False, "Expected ValueError for singular matrix"
+    except ValueError as e:
+        assert "singular" in str(e)
 
 
 def test_rank_and_basis():
@@ -195,8 +199,11 @@ def test_verify_solution_inconsistent_branch_raises():
     A = [[1, 1], [1, 1]]
     b = [1, 2]
     _, info, _ = gaussian_eliminate(A, b)
-    with pytest.raises(ValueError, match="inconsistent"):
+    try:
         verify_solution(A, info, b)
+        assert False, "Expected ValueError for inconsistent system"
+    except ValueError as e:
+        assert "inconsistent" in str(e)
 
 
 if __name__ == "__main__":
