@@ -1,7 +1,7 @@
 from __future__ import annotations
 from collections.abc import Sequence
 
-from .utils import Number, _to_matrix, _shape
+from .utils import Number, _shape, _to_matrix
 from .gaussian import _forward_elimination_ref
 
 """
@@ -25,8 +25,8 @@ def determinant(A: Sequence[Sequence[Number]], eps: float = 1e-12) -> float:
     if rows != cols:
         raise ValueError("determinant(A) requires a square matrix.")
 
-    ref_matrix, swap_count, _ = _forward_elimination_ref(matrix, eps=eps, pivot_limit=cols)
-    det = (-1.0 if swap_count % 2 else 1.0)
+    ref_matrix, swap_count, _, _ = _forward_elimination_ref(matrix, eps=eps, pivot_limit=cols)
+    det = -1.0 if swap_count % 2 else 1.0
     for i in range(rows):
         det *= ref_matrix[i][i]
 

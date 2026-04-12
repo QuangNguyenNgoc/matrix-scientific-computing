@@ -1,19 +1,18 @@
 from __future__ import annotations
 
-from typing import Dict, List, Sequence, Tuple, Union, Any
+from typing import Any, Dict, List, Sequence, Tuple
 
 from .utils import (
-    Number,
     Matrix,
+    Number,
     Vector,
+    _augment,
+    _clean_small_entries,
+    _copy_matrix,
+    _shape,
+    _swap_rows,
     _to_matrix,
     _to_vector,
-    _shape,
-    _copy_matrix,
-    _identity,
-    _clean_small_entries,
-    _augment,
-    _swap_rows,
 )
 
 """
@@ -23,6 +22,8 @@ Các nội dung trong file này:
 - dựng RREF để phân loại hệ
 - biểu diễn nghiệm tổng quát khi hệ có vô số nghiệm
 """
+
+_NEAR_ZERO_PIVOT_WARNING = "pivot is near zero; the system may be ill-conditioned"
 
 
 def back_substitution(U: Sequence[Sequence[Number]], c: Sequence[Number], eps: float = 1e-12) -> Vector:
@@ -55,27 +56,38 @@ def back_substitution(U: Sequence[Sequence[Number]], c: Sequence[Number], eps: f
     return [0.0 if abs(value) <= eps else value for value in x]
 
 
+def _append_warning_once(warnings: List[str], message: str) -> None:
+    if message not in warnings:
+        warnings.append(message)
+
+
 def _forward_elimination_ref(
     M: Matrix,
     eps: float = 1e-12,
     *,
     pivot_limit: int | None = None,
-) -> Tuple[Matrix, int, List[int]]:
+) -> Tuple[Matrix, int, List[int], List[str]]:
     ref = _copy_matrix(M)
     rows, cols = _shape(ref)
     if pivot_limit is None:
         pivot_limit = cols
 
     pivot_columns: List[int] = []
+    warnings: List[str] = []
     swap_count = 0
     pivot_row = 0
+
+    matrix_scale = max((abs(value) for row in ref for value in row), default=1.0)
+    near_zero_threshold = max(1_000.0 * eps * max(1.0, matrix_scale), eps)
 
     for col in range(min(pivot_limit, cols)):
         if pivot_row >= rows:
             break
 
+        # Partial pivoting: chọn dòng có phần tử lớn nhất theo trị tuyệt đối trong cột hiện tại
         best_row = max(range(pivot_row, rows), key=lambda r: abs(ref[r][col]))
-        if abs(ref[best_row][col]) <= eps:
+        best_value = ref[best_row][col]
+        if abs(best_value) <= eps:
             continue
 
         if best_row != pivot_row:
@@ -84,6 +96,8 @@ def _forward_elimination_ref(
 
         pivot_columns.append(col)
         pivot_value = ref[pivot_row][col]
+        if abs(pivot_value) <= near_zero_threshold:
+            _append_warning_once(warnings, _NEAR_ZERO_PIVOT_WARNING)
 
         for r in range(pivot_row + 1, rows):
             if abs(ref[r][col]) <= eps:
@@ -96,7 +110,7 @@ def _forward_elimination_ref(
 
         pivot_row += 1
 
-    return _clean_small_entries(ref, eps), swap_count, pivot_columns
+    return _clean_small_entries(ref, eps), swap_count, pivot_columns, warnings
 
 
 def _rref(M: Matrix, eps: float = 1e-12) -> Tuple[Matrix, List[int]]:
@@ -211,6 +225,20 @@ def _extract_upper_system(
     return U, c_vector
 
 
+def _build_unique_solution_from_rref(
+    rref_augmented: Matrix,
+    variable_count: int,
+    pivot_columns: List[int],
+    eps: float = 1e-12,
+) -> Vector:
+    x = [0.0] * variable_count
+    for row_index, pivot_col in enumerate(pivot_columns):
+        if pivot_col >= variable_count:
+            continue
+        x[pivot_col] = rref_augmented[row_index][-1]
+    return [0.0 if abs(value) <= eps else value for value in x]
+
+
 def gaussian_eliminate(
     A: Sequence[Sequence[Number]],
     b: Sequence[Number],
@@ -231,11 +259,11 @@ def gaussian_eliminate(
 
     solution_info có thể thuộc một trong ba dạng:
     1. unique:
-       {"type": "unique", "x": [...], "pivot_columns": [...]}
+       {"type": "unique", "x": [...], "pivot_columns": [...], ...}
     2. infinite:
        {"type": "infinite", "particular": [...], "nullspace_basis": [...], ...}
     3. inconsistent:
-       {"type": "inconsistent", "message": "...", "pivot_columns": [...]}
+       {"type": "inconsistent", "message": "...", "pivot_columns": [...], ...}
     """
     matrix = _to_matrix(A)
     rhs = _to_vector(b)
@@ -244,7 +272,7 @@ def gaussian_eliminate(
         raise ValueError("A and b must have the same number of rows.")
 
     augmented = _augment(matrix, rhs)
-    ref_augmented, swap_count, pivot_columns = _forward_elimination_ref(
+    ref_augmented, swap_count, pivot_columns, warnings = _forward_elimination_ref(
         augmented,
         eps=eps,
         pivot_limit=cols,
@@ -254,23 +282,37 @@ def gaussian_eliminate(
 
     for row in ref_augmented:
         if all(abs(row[j]) <= eps for j in range(cols)) and abs(row[-1]) > eps:
-            return ref_augmented, {
+            solution_info: Dict[str, Any] = {
                 "type": "inconsistent",
                 "pivot_columns": pivot_columns,
                 "message": "The system is inconsistent, so it has no solution.",
-            }, swap_count
+            }
+            if warnings:
+                solution_info["warnings"] = warnings
+            return ref_augmented, solution_info, swap_count
 
-    if cols == rows and rank_A == cols:
-        # Tách hệ tam giác trên Ux = c từ ma trận tăng cường sau khi khử
-        U, c_vector = _extract_upper_system(ref_augmented, cols, eps=eps)
+    if rank_A == cols:
+        if cols == rows:
+            # Tách hệ tam giác trên Ux = c từ ma trận tăng cường sau khi khử
+            U, c_vector = _extract_upper_system(ref_augmented, cols, eps=eps)
+            x = back_substitution(U, c_vector, eps=eps)
+        else:
+            rref_augmented, rref_pivot_columns = _rref(augmented, eps=eps)
+            x = _build_unique_solution_from_rref(
+                rref_augmented,
+                cols,
+                [col for col in rref_pivot_columns if col < cols],
+                eps=eps,
+            )
 
-        # Giải hệ tam giác trên
-        x = back_substitution(U, c_vector, eps=eps)
-        return ref_augmented, {
+        solution_info = {
             "type": "unique",
             "x": x,
             "pivot_columns": pivot_columns,
-        }, swap_count
+        }
+        if warnings:
+            solution_info["warnings"] = warnings
+        return ref_augmented, solution_info, swap_count
 
     rref_augmented, rref_pivot_columns = _rref(augmented, eps=eps)
     solution_info = _build_general_solution_from_rref(
@@ -280,4 +322,6 @@ def gaussian_eliminate(
         eps=eps,
     )
     solution_info["rref_augmented"] = rref_augmented
+    if warnings:
+        solution_info["warnings"] = warnings
     return ref_augmented, solution_info, swap_count
