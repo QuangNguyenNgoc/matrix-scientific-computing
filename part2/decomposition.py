@@ -6,6 +6,12 @@ def svdDecomp(matA):
     # Phân rã SVD cho ma trận m x n: A = U * Sigma * V^T
     m = len(matA)
     n = len(matA[0])
+    
+    for row in matA:
+        for val in row:
+            if math.isnan(val) or math.isinf(val):
+                raise ValueError("Ma trận chứa giá trị NaN hoặc Inf không hợp lệ.")
+                
     # Tính tích A^T * A
     matATranspose = matrixTranspose(matA)
     matAtA = matrixMultiply(matATranspose, matA)
@@ -86,15 +92,29 @@ def verifySvd(matA, matU, matSigma, matVT):
     print("* Kiểm chứng SVD")
     print(f"Sai số tái cấu trúc ||A - U*Sigma*V^T||max = {maxError:.2e}")
     if maxError < 1e-4:
-        print("- Cài đặt SVD đúng (A ~ U Sigma V^T).")
+        print("Cài đặt SVD đúng (A ~ U*Sigma*V^T).")
     else:
-        print("- Cài đặt SVD có thể có sai số cao.")
+        print("Cài đặt SVD có thể có sai số cao.")
     arrS = np.linalg.svd(arrA)[1]
     # So sánh các giá trị kỳ dị (chỉ lưu min(m, n) phần tử)
     mySingularVals = [matSigma[i][i] for i in range(min(len(matA), len(matA[0])))]
     errSv = np.max(np.abs(np.array(mySingularVals) - arrS))
     print(f"Sai số giá trị kỳ dị so với NumPy = {errSv:.2e}")
     return maxError < 1e-4 and errSv < 1e-4
+
+def demo_svd(matA):
+    matU, matSigma, matVT = svdDecomp(matA)
+    print("\n* Kết quả phân rã SVD")
+    print("Ma trận U (Left Singular Vectors):")
+    for row in matU:
+        print("  " + " ".join(f"{val:8.4f}" for val in row))
+    print("\nMa trận kích thước m x n Sigma (Singular Values):")
+    for row in matSigma:
+        print("  " + " ".join(f"{val:8.4f}" for val in row))
+    print("\nMa trận V^T (Right Singular Vectors Transposed):")
+    for row in matVT:
+        print("  " + " ".join(f"{val:8.4f}" for val in row))
+    verifySvd(matA, matU, matSigma, matVT)
 
 def main():
     try:
@@ -108,18 +128,7 @@ def main():
                 print(f"Lỗi: Dòng {i+1} không có đủ {cols} phần tử. Vui lòng thử lại.")
                 exit()
             matA.append(row)
-        matU, matSigma, matVT = svdDecomp(matA)
-        print("\n* Kết quả phân rã SVD")
-        print("Ma trận U (Left Singular Vectors):")
-        for row in matU:
-            print("  " + " ".join(f"{val:8.4f}" for val in row))
-        print("\nMa trận kích thước m x n Sigma (Singular Values):")
-        for row in matSigma:
-            print("  " + " ".join(f"{val:8.4f}" for val in row))
-        print("\nMa trận V^T (Right Singular Vectors Transposed):")
-        for row in matVT:
-            print("  " + " ".join(f"{val:8.4f}" for val in row))
-        verifySvd(matA, matU, matSigma, matVT)
+        demo_svd(matA)
     except ValueError:
         print("Lỗi: Dữ liệu nhập vào chưa hợp lệ.")
 

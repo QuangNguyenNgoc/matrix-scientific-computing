@@ -195,6 +195,37 @@ def findEigen(matrix):
         npEvecs = npEvecs[:, idx]
         return npEvs.tolist(), npEvecs.tolist()
 
+def checkDiagonalizable(evs, matP):
+    n = len(evs)
+    distinct = True
+    for i in range(n):
+        for j in range(i + 1, n):
+            if abs(evs[i] - evs[j]) < 1e-4:
+                distinct = False
+                break
+        if not distinct:
+            break
+    if distinct:
+        return True, "Ma trận thỏa mãn điều kiện đủ: Có n giá trị riêng phân biệt."
+    # Điều kiện cần và đủ: A có n vector riêng độc lập tuyến tính
+    mat = [row[:] for row in matP]
+    for i in range(n):
+        pivot = mat[i][i]
+        if abs(pivot) < 1e-9:
+            for k in range(i + 1, n):
+                if abs(mat[k][i]) > abs(pivot):
+                    mat[i], mat[k] = mat[k], mat[i]
+                    pivot = mat[i][i]
+                    break
+        if abs(pivot) < 1e-9:
+            return False, "Ma trận không chéo hóa được: Không đủ n vector riêng độc lập tuyến tính."
+        for k in range(i + 1, n):
+            factor = mat[k][i] / pivot
+            for j in range(i, n):
+                mat[k][j] -= factor * mat[i][j]
+                
+    return True
+
 def diagonalize(matrix):
     # Chéo hóa ma trận thành A = P * D * P^-1
     n = len(matrix)
@@ -202,6 +233,12 @@ def diagonalize(matrix):
     matD = [[0.0 for col in range(n)] for row in range(n)]
     for i in range(n):
         matD[i][i] = evs[i]  
+        
+    is_diag = checkDiagonalizable(evs, matP)
+    
+    if not is_diag:
+        raise ValueError("Lỗi: Ma trận không thể chéo hóa được do không thỏa điều kiện.")
+        
     matPInv = gaussInverse(matP)
     return matP, matD, matPInv
 
@@ -216,14 +253,28 @@ def verify(matrixA, matP, matD, matPInv):
     print("* Kiểm chứng chéo hóa")
     print(f"Sai số tái cấu trúc ||A - P*D*P^-1||max = {maxError:.2e}")
     if maxError < 1e-4:
-        print("Cài đặt chéo hóa đúng (A ~ P D P^-1).")
+        print("Cài đặt chéo hóa đúng (A ~ P*D*P^-1).")
     else:
         print("Cài đặt chéo hóa có thể có sai số cao.")   
-    arrEvs = np.linalg.eig(arrA)[0]
+    arrEvs = np.linalg.eigvals(arrA)
     myEvs = np.diag(arrD)
     errEv = np.max(np.abs(np.sort(myEvs)[::-1] - np.sort(arrEvs.real)[::-1]))
     print(f"Sai số giá trị riêng so với NumPy = {errEv:.2e}")
     return maxError < 1e-4 and errEv < 1e-4
+
+def demo_diagonalize(matA):
+    matP, matD, matPInv = diagonalize(matA)
+    print("\n* Kết quả chéo hóa")
+    print("Ma trận đổi cơ sở P (Các vector riêng nằm trên các cột):")
+    for row in matP:
+        print("  " + " ".join(f"{val:8.4f}" for val in row))
+    print("\nMa trận đường chéo D (Các giá trị riêng):")
+    for row in matD:
+        print("  " + " ".join(f"{val:8.4f}" for val in row))
+    print("\nMa trận P^-1:")
+    for row in matPInv:
+        print("  " + " ".join(f"{val:8.4f}" for val in row))
+    return verify(matA, matP, matD, matPInv)
 
 def main():
     try:
@@ -236,18 +287,7 @@ def main():
                 print(f"Lỗi: Dòng {i+1} không có đủ {size} phần tử. Vui lòng thử lại.")
                 exit()
             matA.append(row)
-        matP, matD, matPInv = diagonalize(matA)
-        print("\n* Kết quả chéo hóa")
-        print("Ma trận đổi cơ sở P (Các vector riêng nằm trên các cột):")
-        for row in matP:
-            print("  " + " ".join(f"{val:8.4f}" for val in row))
-        print("\nMa trận đường chéo D (Các giá trị riêng):")
-        for row in matD:
-            print("  " + " ".join(f"{val:8.4f}" for val in row))
-        print("\nMa trận P^-1:")
-        for row in matPInv:
-            print("  " + " ".join(f"{val:8.4f}" for val in row))
-        verify(matA, matP, matD, matPInv)
+        demo_diagonalize(matA)
     except ValueError:
         print("Lỗi: Dữ liệu nhập vào chưa hợp lệ.")
 
