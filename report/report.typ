@@ -1,28 +1,133 @@
+// module
+#import "@preview/chic-hdr:0.5.0":*
+#import "@preview/equate:0.3.2":*
+
+// constraint
+#let title-color = rgb("#1E3778")
+#let body-color = rgb("#111111")
+#let soft-color = rgb("#666666")
+
+#let body-font = "Times New Roman"
+#let mono-font = "Consolas"
+
+// page + text + paragraph
 #set page(
   paper: "a4",
   margin: (x: 2.5cm, y: 2.5cm),
 )
 
 #set text(
-  font: "Times New Roman",
-  size: 12.5pt,
+  font: body-font,
+  size: 11.5pt,
+  fill: body-color,
+  lang: "vi",
 )
 
-#set heading(
-  numbering: "1.",
+#set par(
+  justify: true,
+  first-line-indent: 1.2em,
+  leading: 0.72em,
 )
+
+// numbering
+// = phần chính
+#let report-numbering(..nums) = {
+  let parts = nums.pos().map(str)
+  let s = parts.join(".")
+  [#s #h(0.35em)|]
+}
+#show heading.where(level: 1): set heading(numbering: report-numbering)
+
+#show heading.where(level: 1): it => [
+  #v(0.5em)
+  #text(
+    font: body-font,
+    weight: "bold",
+    size: 20pt,
+    fill: title-color,
+  )[#it]
+  #v(0.5em)
+]
+#show heading.where(level: 1):  it => if true {pagebreak(weak: true);it} else {it}
+
+// == phần mục phụ
+#let level2-numbering(..nums) = {
+  let s = nums.pos().map(str).join(".")
+  [#s.]
+}
+#show heading.where(level: 2): set heading(numbering: level2-numbering)
+
+#show heading.where(level: 2): it => [
+  #text(
+    font: body-font,
+    weight: "bold",
+    size: 15pt,
+    fill: title-color,
+  )[#it]
+  #v(0.5em)
+]
+
+// non-numbering
+#show selector(<nonumber>): set heading(
+  numbering: none,
+  outlined: false,
+)
+
+// math
+#set math.equation(numbering: "(1)")
+
+// figure caption
+#show figure.caption: it => [
+  #set text(size: 10pt, fill: soft-color)
+  #strong[#it.supplement ~ #it.counter.display(it.numbering)]
+  #it.separator
+  #it.body
+]
+
+#show figure.where(kind: table): set figure.caption(position: top)
+
+// table
+#show table.cell: set par(
+  justify: false,
+  first-line-indent: 0em,
+)
+
+// code block
+#let codeblock(lines) = block(
+  width: 100%,
+  fill: rgb("#F7F7F7"),
+  stroke: 0.6pt + rgb("#D6D6D6"),
+  inset: 10pt,
+  radius: 4pt,
+)[
+  #set text(font: mono-font, size: 9.5pt)
+  #set par(justify: false, first-line-indent: 0em)
+
+  #for (i, line) in lines.enumerate() [
+    #grid(
+      columns: (2em, 1fr),
+      gutter: 0.8em,
+      [
+        #align(right)[
+          #text(fill: soft-color)[#(i + 1)]
+        ]
+      ],
+      [#line],
+    )
+  ]
+]
+
+// first page
 
 #align(center)[
-  #text(14pt, weight: "bold")[TRƯỜNG ĐẠI HỌC KHOA HỌC TỰ NHIÊN]  
-  
-  #text(13pt)[KHOA CÔNG NGHỆ THÔNG TIN]
+  #text(14pt, weight: "bold")[TRƯỜNG ĐẠI HỌC KHOA HỌC TỰ NHIÊN]\
+  KHOA CÔNG NGHỆ THÔNG TIN
   #v(2.5cm)
   #text(16pt, weight: "bold")[BÁO CÁO ĐỒ ÁN 1]
   #v(0.5cm)
   #text(22pt, weight: "bold")[Ma Trận và Cơ Sở của Tính Toán Khoa Học]
   #v(1cm)
   #text(14pt)[Môn học: Toán Ứng Dụng và Thống Kê]
-
   #v(2cm)
 ]
 
@@ -41,35 +146,36 @@
   - ThS. Lê Nhựt Nam  
 ]
 
-#v(5cm)
-
+#v(1fr)
 #align(center)[
   TP. Hồ Chí Minh, ngày 20 tháng 4 năm 2026
 ]
 
 #pagebreak()
 
-#outline(title: [Mục lục])
+// Mục lục
+#outline(title: auto, depth: 3,indent: auto)
 
 #pagebreak()
 
-#let intro() = [
-= Giới thiệu đồ án
+// header/footer
+#show: chic.with(
+  chic-header(
+    left-side: [Tên tài liệu],
+    right-side: chic-heading-name(),
+  ),
+  chic-footer(
+    right-side: chic-page-number(),
+  ),
+  chic-separator(1pt),
+  chic-offset(14pt),
+)
 
-Đồ án này tập trung vào ba nhóm nội dung chính: phép khử Gauss và các ứng dụng, phân rã ma trận kết hợp trực quan hóa, và phân tích hiệu năng cũng như tính ổn định số. Mục tiêu không chỉ là cài đặt thuật toán từ đầu bằng Python mà còn phải hiểu rõ bản chất toán học, kiểm chứng kết quả và trình bày lại bằng báo cáo cùng video minh họa.
-
-Trong quá trình thực hiện, nhóm thống nhất sử dụng Python làm ngôn ngữ chính, kết hợp với các thư viện hỗ trợ để kiểm chứng, trực quan hóa và phân tích kết quả. Phần cài đặt thuật toán được viết theo hướng tự xây dựng lại từ đầu, còn các thư viện như NumPy hoặc SciPy chỉ được dùng cho mục đích đối chiếu và kiểm chứng.
-
-Báo cáo được tổ chức thành ba phần tương ứng với yêu cầu của đề bài. Phần đầu trình bày phép khử Gauss và các ứng dụng trực tiếp. Phần hai tập trung vào phân rã ma trận, chéo hóa và video Manim. Phần ba trình bày thực nghiệm benchmark, phân tích sai số và đánh giá tính ổn định số.
-]
-
-#intro()
-
+#include "modules/chapters/intro.typ"
 
 = Đồ án 1 - Ma trận
 
 == Giới thiệu
-
 Đây là báo cáo viết bằng Typst.
 
 == Công thức
@@ -83,4 +189,11 @@ $ mat(
   3, 4
 ) $
 
-
+#codeblock((
+  "Group_<ID>/",
+  "|-- README.md",
+  "|-- requirements.txt",
+  "|-- report/",
+  "|   |-- report.pdf",
+  "|   `-- report.tex",
+))
