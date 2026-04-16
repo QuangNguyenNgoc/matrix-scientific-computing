@@ -48,7 +48,7 @@
 )
 
 // = phần chính
-#show heading.where(level: 1): it => [#text(fill: title-color, font: body-font, size: 22pt)[#it] #v(0.8em)]
+#show heading.where(level: 1): it => [#text(fill: title-color, font: body-font, size: 20pt)[#it] #v(0.8em)]
 #show heading.where(level: 1):  it => if true {pagebreak(weak: true);it} else {it}
 
 // == phụ lục cấp 2
@@ -151,12 +151,10 @@
 // Mục lục
 #outline(title: auto, depth: 3,indent: auto)
 
-#pagebreak()
-
 // header/footer
 #show: chic.with(
   chic-header(
-    left-side: [Tên tài liệu],
+    left-side: [FIT-HCMUS],
     right-side: chic-heading-name(),
   ),
   chic-footer(
