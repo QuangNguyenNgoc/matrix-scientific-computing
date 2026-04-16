@@ -31,40 +31,34 @@
 
 // numbering
 // = phần chính
-#let report-numbering(..nums) = {
-  let parts = nums.pos().map(str)
-  let s = parts.join(".")
-  [#s #h(0.35em)|]
-}
-#show heading.where(level: 1): set heading(numbering: report-numbering)
+#set heading(
+    numbering: (..nums) => [
+        #nums.pos().map(str).join(".")
+        #h(0.1em)
+        #box(width: 1.2pt, height: 1em, fill: title-color.darken(30%), baseline: 15%)
+        #h(0.1em)
+      ]
+  )
 
-#show heading.where(level: 1): it => [
-  #v(0.5em)
-  #text(
-    font: body-font,
-    weight: "bold",
-    size: 20pt,
-    fill: title-color,
-  )[#it]
-  #v(0.5em)
-]
+#show heading.where(level: 1): it => [#text(fill: title-color, font: body-font, size: 22pt)[#it] #v(0.8em)]
 #show heading.where(level: 1):  it => if true {pagebreak(weak: true);it} else {it}
 
-// == phần mục phụ
-#let level2-numbering(..nums) = {
+// == phụ lục cấp 2
+#let dot-numbering(..nums) = {
   let s = nums.pos().map(str).join(".")
   [#s.]
 }
-#show heading.where(level: 2): set heading(numbering: level2-numbering)
+#show heading.where(level: 2): set heading(numbering: dot-numbering)
 
 #show heading.where(level: 2): it => [
-  #text(
-    font: body-font,
-    weight: "bold",
-    size: 15pt,
-    fill: title-color,
-  )[#it]
-  #v(0.5em)
+  #text(font: body-font, size: 16pt, fill: title-color,)[#it]
+]
+
+// === phụ lục cấp 3
+#show heading.where(level: 3): set heading(numbering: dot-numbering)
+
+#show heading.where(level: 3): it => [
+  #text(font: body-font, fill: title-color,)[#it] #v(0.5em)
 ]
 
 // non-numbering
@@ -176,8 +170,9 @@
 = Đồ án 1 - Ma trận
 
 == Giới thiệu
+=== Motif
 Đây là báo cáo viết bằng Typst.
-
+Nội dung này đang cần bố sung. 
 == Công thức
 
 $ A x = b $
