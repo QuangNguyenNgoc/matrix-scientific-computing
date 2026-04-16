@@ -30,33 +30,33 @@
 )
 
 // numbering
-// = phần chính
 #set heading(
-    numbering: (..nums) => [
-        #nums.pos().map(str).join(".")
-        #h(0.1em)
+   numbering: (..nums) => {
+    let s = nums.pos().map(str).join(".")
+    if nums.pos().len() == 1 {
+      // Style cho Level 1 (Số | Tiêu đề)
+      return [
+        #s #h(0.1em)
         #box(width: 1.2pt, height: 1em, fill: title-color.darken(30%), baseline: 15%)
         #h(0.1em)
       ]
-  )
+    } else {
+      // Style cho Level 2, 3 (Số.)
+      return [#s.]
+    }
+  }
+)
 
+// = phần chính
 #show heading.where(level: 1): it => [#text(fill: title-color, font: body-font, size: 22pt)[#it] #v(0.8em)]
 #show heading.where(level: 1):  it => if true {pagebreak(weak: true);it} else {it}
 
 // == phụ lục cấp 2
-#let dot-numbering(..nums) = {
-  let s = nums.pos().map(str).join(".")
-  [#s.]
-}
-#show heading.where(level: 2): set heading(numbering: dot-numbering)
-
 #show heading.where(level: 2): it => [
   #text(font: body-font, size: 16pt, fill: title-color,)[#it]
 ]
 
 // === phụ lục cấp 3
-#show heading.where(level: 3): set heading(numbering: dot-numbering)
-
 #show heading.where(level: 3): it => [
   #text(font: body-font, fill: title-color,)[#it] #v(0.5em)
 ]
