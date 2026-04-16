@@ -68,7 +68,8 @@
 )
 
 // math
-#set math.equation(numbering: "(1)")
+#set math.equation(numbering: "(1.1)")
+#show: equate.with(breakable: true, sub-numbering: true)
 
 // figure caption
 #show figure.caption: it => [
@@ -111,10 +112,11 @@
   ]
 ]
 
-// first page
+//// end of config
 
+// first page
 #align(center)[
-  #text(14pt, weight: "bold")[TRƯỜNG ĐẠI HỌC KHOA HỌC TỰ NHIÊN]\
+  #text(16pt, weight: "bold")[TRƯỜNG ĐẠI HỌC KHOA HỌC TỰ NHIÊN]\
   KHOA CÔNG NGHỆ THÔNG TIN
   #v(2.5cm)
   #text(16pt, weight: "bold")[BÁO CÁO ĐỒ ÁN 1]
@@ -144,7 +146,6 @@
 #align(center)[
   TP. Hồ Chí Minh, ngày 20 tháng 4 năm 2026
 ]
-
 #pagebreak()
 
 // Mục lục
@@ -192,3 +193,8 @@ $ mat(
   "|   |-- report.pdf",
   "|   `-- report.tex",
 ))
+
+ $ alpha = 5 x x /7  oo > integral_oo^oo  dif x   = -> => >= integral_a^x  oo sum_a_i angle.l alpha|x|a_i angle.r  dif x  $ <eq1>
+
+ $ E &= m c^2 \
+    &= sqrt(p^2 c^2 + m^2 c^4) $
