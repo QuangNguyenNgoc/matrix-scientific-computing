@@ -16,6 +16,9 @@ import numpy as np
 import warnings
 import math
 
+# Import API từ Part 1 theo yêu cầu Reviewer thay vì tự viết lại
+from part1.gaussian import gaussian_eliminate
+
 
 # ============================================================================
 #  HÀM PHỤ TRỢ (Utility helpers)
@@ -84,40 +87,16 @@ def _is_spd(A):
 # ============================================================================
 
 def solve_gauss(A, b):
-    # Khởi tạo ma trận tăng cường M = [A | b] bằng list thuần
-    n = len(A)
-    M = [[A[i][j] for j in range(n)] + [float(b[i])] for i in range(n)]
-
-    for k in range(n):
-        # Chọn phần tử chốt lớn nhất trên cột k, từ hàng k đến n-1
-        max_idx = k
-        max_val = abs(M[k][k])
-        for i in range(k + 1, n):
-            if abs(M[i][k]) > max_val:
-                max_val = abs(M[i][k])
-                max_idx = i
-
-        # Hoán vị dòng nếu cần
-        if max_idx != k:
-            M[k], M[max_idx] = M[max_idx], M[k]
-
-        # Kiểm tra pivot gần 0
-        if abs(M[k][k]) < 1e-15:
-            raise ValueError(f"Pivot tại cột {k} xấp xỉ 0. Ma trận có thể suy biến.")
-
-        # Khử các dòng phía dưới pivot
-        for i in range(k + 1, n):
-            factor = M[i][k] / M[k][k]
-            for j in range(k, n + 1):
-                M[i][j] -= factor * M[k][j]
-
-    # Thế ngược (Back substitution)
-    x = [0.0] * n
-    for i in range(n - 1, -1, -1):
-        s = sum(M[i][j] * x[j] for j in range(i + 1, n))
-        x[i] = (M[i][n] - s) / M[i][i]
-
-    return x
+    """
+    Giải hệ phương trình Ax=b bằng cách gọi trực tiếp API từ Part 1
+    nhằm đảm bảo tính tái sử dụng và nguyên tắc DRY (Don't Repeat Yourself).
+    """
+    ref_augmented, solution_info, swap_count = gaussian_eliminate(A, b)
+    
+    if solution_info.get("type") == "unique":
+        return solution_info["x"]
+    else:
+        raise ValueError(f"Hệ phương trình không có nghiệm duy nhất. Chi tiết: {solution_info.get('message', 'N/A')}")
 
 
 # ============================================================================
