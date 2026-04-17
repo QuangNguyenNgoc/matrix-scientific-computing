@@ -25,9 +25,11 @@
 
 #set par(
   justify: true,
-  first-line-indent: 1.2em,
+  first-line-indent: (amount: 1.2em, all: true),
   leading: 0.72em,
 )
+
+#set list(indent: 1.5em)
 
 // numbering
 #set heading(
