@@ -1,4 +1,4 @@
-= Giới thiệu đồ án
+= Giới thiệu đồ án <nonumber>
 
 Đồ án này tập trung vào ba nhóm nội dung chính: phép khử Gauss và các ứng dụng, phân rã ma trận kết hợp trực quan hóa, và phân tích hiệu năng cũng như tính ổn định số. Mục tiêu không chỉ là cài đặt thuật toán từ đầu bằng Python mà còn phải hiểu rõ bản chất toán học, kiểm chứng kết quả và trình bày lại bằng báo cáo cùng video minh họa.
 

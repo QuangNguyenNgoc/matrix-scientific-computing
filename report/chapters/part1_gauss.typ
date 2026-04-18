@@ -119,3 +119,9 @@ Không tham gia vào phần tính toán lõi. Hàm này chỉ dùng để đối
 
 *Cách cài đặt:*
 Nếu đầu vào là nghiệm duy nhất hoặc nghiệm riêng của hệ vô số nghiệm, hàm chuyển sang mảng NumPy để kiểm tra Ax≈b. Nếu đầu vào thuộc nhánh vô nghiệm, hàm báo lỗi thay vì cố kiểm tra một nghiệm không tồn tại.
+
+
+== Kiểm chứng và kết quả
+Sau khi hoàn thành phần cài đặt, nhóm sử dụng các case tiêu biểu để kiểm tra thuật toán. Mục tiêu của phần này không chỉ là xác nhận chương trình chạy đúng, mà còn làm rõ ý nghĩa toán học của từng loại kết quả và đối chiếu với hành vi mong đợi của thuật toán.
+
+=== Ma trận khả nghịch nhỏ

@@ -12,8 +12,8 @@
 ]
 
 #align(left)[
-  *Thành viên thực hiện:*  
-  - Nguyễn Ngọc Quang --- MSSV: 24120127
+  *Thực hiện: Nhóm 12 (Lớp CQ2024-3)*  
+  - Nguyễn Ngọc Quang (NT) --- MSSV: 24120127
   - Đặng Quang Tiến --- MSSV: 24120149
   - Liên Trung Hiếu --- MSSV: 24120049
   - Trương Đình Nhật Huy --- MSSV: 24120064 
