@@ -1,4 +1,4 @@
-= Phân rã ma trận và trực quan hóa với Manim
+= *Phần 2:* Phân rã ma trận và trực quan hóa với Manim
 Trong phàn này, nhóm tập trung vào kỹ thuật phân rã ma trận và chéo hóa, trong đó nhóm lựa chọn phân rã kỳ dị SVD làm kỹ thuật chính. Lý do "..."
 
 Ngoài ra, nhóm có dùng Manim để trực quan hóa các kỹ thuật trên để có thể theo dõi quá trình phân rã và chéo hóa thông qua bài toán.
