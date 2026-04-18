@@ -62,10 +62,17 @@
 #show heading.where(level: 3): it => [
   #text(font: body-font, fill: title-color,)[#it] #v(0.5em)
 ]
+#show heading.where(level: 3): set heading(outlined: false)
+
 
 // non-numbering
 #show selector(<nonumber>): set heading(
   numbering: none,
+  outlined: false,
+)
+
+// non-outlined
+#show selector(<nooutlined>): set heading(
   outlined: false,
 )
 
@@ -139,9 +146,6 @@
 #include "chapters/part3_solve_analysis.typ"
 #include "chapters/conclude.typ"
 #include "chapters/appendix.typ"
-
-
-
 
 = Đồ án 1 - Ma trận
 
