@@ -109,9 +109,9 @@ def run_timing_benchmark():
     results = []
 
     for n in SIZES_TIMING:
-        print(f"\n{'─' * 50}")
+        print(f"\n{'-' * 50}")
         print(f"  n = {n}")
-        print(f"{'─' * 50}")
+        print(f"{'-' * 50}")
 
         # Sinh ma trận chéo trội (đảm bảo Gauss-Seidel hội tụ)
         A = generate_diag_dominant_matrix(n, seed=42)
@@ -185,7 +185,7 @@ def run_timing_benchmark():
         writer.writeheader()
         writer.writerows(results)
 
-    print(f"\n✅ Kết quả đã lưu tại: {csv_path}")
+    print(f"\n Kết quả đã lưu tại: {csv_path}")
     return results
 
 
@@ -206,11 +206,11 @@ def run_stability_benchmark():
     results = []
 
     # --- B1. Ma trận Hilbert (ill-conditioned) ---
-    print("\n▶ B1. Ma trận Hilbert (Ill-conditioned)")
-    print(f"{'─' * 60}")
+    print("\n B1. Ma trận Hilbert (Ill-conditioned)")
+    print(f"{'-' * 60}")
     print(f"  {'n':>4s} | {'κ(H_n)':>15s} | {'Gauss err':>12s} | "
           f"{'LU err':>12s} | {'G-S err':>12s}")
-    print(f"{'─' * 60}")
+    print(f"{'-' * 60}")
 
     for n in SIZES_HILBERT:
         H = generate_hilbert_matrix(n)
@@ -252,11 +252,11 @@ def run_stability_benchmark():
               f"{err_lu:12.4e} | {err_gs:12.4e}")
 
     # --- B2. Ma trận SPD ngẫu nhiên (well-conditioned) ---
-    print(f"\n▶ B2. Ma trận SPD ngẫu nhiên (Well-conditioned)")
-    print(f"{'─' * 60}")
+    print(f"\n B2. Ma trận SPD ngẫu nhiên (Well-conditioned)")
+    print(f"{'-' * 60}")
     print(f"  {'n':>4s} | {'κ(A)':>15s} | {'Gauss err':>12s} | "
           f"{'LU err':>12s} | {'G-S err':>12s}")
-    print(f"{'─' * 60}")
+    print(f"{'-' * 60}")
 
     for n in SIZES_SPD_STABILITY:
         A_spd = generate_spd_matrix(n, seed=123)
