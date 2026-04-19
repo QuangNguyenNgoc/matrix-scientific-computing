@@ -123,6 +123,7 @@
 
 //// end of config
 #include "chapters/cover.typ"
+#include "chapters/group_work.typ"
 
 // Mục lục
 #outline(title: auto, depth: 3,indent: auto)
@@ -146,40 +147,3 @@
 #include "chapters/part3_solve_analysis.typ"
 #include "chapters/conclude.typ"
 #include "chapters/appendix.typ"
-
-
-
-
-
-
-
-// = Đồ án 1 - Ma trận
-
-// == Giới thiệu
-// === Motif
-// Đây là báo cáo viết bằng Typst.
-// Nội dung này đang cần bố sung. 
-// == Công thức
-
-// $ A x = b $
-
-// == Ma trận
-
-// $ mat(
-//   1, 2;
-//   3, 4
-// ) $
-
-// #codeblock((
-//   "Group_<ID>/",
-//   "|-- README.md",
-//   "|-- requirements.txt",
-//   "|-- report/",
-//   "|   |-- report.pdf",
-//   "|   `-- report.tex",
-// ))
-
-//  $ alpha = 5 x x /7  oo > integral_oo^oo  dif x   = -> => >= integral_a^x  oo sum_a_i angle.l alpha|x|a_i angle.r  dif x  $ <eq1>
-
-//  $ E &= m c^2 \
-//     &= sqrt(p^2 c^2 + m^2 c^4) $
