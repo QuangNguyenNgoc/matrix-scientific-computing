@@ -77,7 +77,10 @@ $cal(O)(n^3). $
 
 Kết quả này cho thấy trong môi trường dữ liệu thuận lợi cho hội tụ, phương pháp lặp có thể tiết kiệm thời gian đáng kể so với các phương pháp trực tiếp. Tuy vậy, lợi thế này không nên được hiểu như một kết luận tuyệt đối, vì hiệu quả của Gauss-Seidel còn phụ thuộc mạnh vào cấu trúc ma trận và tốc độ hội tụ thực tế.
 
-*(Chèn Hình 1: Đồ thị log-log thời gian thực thi theo kích thước $n$)*
+#figure(
+  image("../images/loglog_timing.png", width: 80%),
+  caption: [Đồ thị log-log thời gian thực thi theo kích thước $n$]
+) <fig:timing>
 
 === Độ chính xác của nghiệm trên dữ liệu điều kiện tốt
 
@@ -95,7 +98,10 @@ Kết quả thực nghiệm cho thấy khi $n$ tăng, *solution error* của cá
 
 Đối với *Gauss-Seidel*, ma trận Hilbert vẫn là ma trận đối xứng xác định dương, nên về mặt lý thuyết phương pháp vẫn có cơ sở hội tụ. Tuy nhiên, kết quả thực nghiệm cho thấy tốc độ hội tụ và độ tin cậy của nghiệm suy giảm rõ rệt khi kích thước tăng. Trong các trường hợp khó, phương pháp có thể cần rất nhiều vòng lặp hoặc dừng ở trạng thái mà sai số nghiệm vẫn còn lớn.
 
-*(Chèn Hình 2: So sánh condition number và solution error trên ma trận Hilbert)*
+#figure(
+  image("../images/stability_comparison.png", width: 80%),
+  caption: [So sánh condition number và solution error trên ma trận Hilbert]
+) <fig:stability>
 
 === So sánh Hilbert và SPD: ý nghĩa về ổn định số học
 
