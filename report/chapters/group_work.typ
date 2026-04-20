@@ -1,3 +1,4 @@
+#pagebreak()
 #align(center)[
   #text(15pt, weight: "bold")[Phân công công việc và mức độ đóng góp]
 ]
