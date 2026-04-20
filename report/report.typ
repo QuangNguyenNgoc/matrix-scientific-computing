@@ -145,5 +145,5 @@
 #include "chapters/part1_gauss.typ"
 #include "chapters/part2_decomposition.typ"
 #include "chapters/part3_solve_analysis.typ"
-#include "chapters/conclude.typ"
+#include "chapters/conclusion.typ"
 #include "chapters/appendix.typ"
