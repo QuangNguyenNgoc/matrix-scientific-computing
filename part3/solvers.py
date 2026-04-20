@@ -3,11 +3,11 @@
   Phần 3 — solvers.py
   Giải hệ phương trình tuyến tính Ax = b bằng 3 phương pháp from scratch:
     1) Khử Gauss với Partial Pivoting
-    2) Phân rã LU với Partial Pivoting  (PA = LU)
-    3) Phương pháp lặp Gauss–Seidel
-  
-  LƯU Ý THEO YÊU CẦU: Thuật toán được cài đặt bằng LIST THUẦN TÚY 100%.
-  NumPy chỉ được phép sử dụng trong việc thiết lập mốc đánh giá kiểm chứng 
+    2) Phân rã LU với Partial Pivoting (PA = LU)
+    3) Phương pháp lặp Gauss-Seidel
+
+  LƯU Ý THEO YÊU CẦU: Thuật toán được cài đặt bằng list thuần.
+  NumPy chỉ được phép sử dụng trong việc thiết lập mốc đánh giá kiểm chứng
   kết quả ở bước verify_solution.
 =============================================================================
 """
@@ -16,13 +16,12 @@ import numpy as np
 import warnings
 import math
 
-# Import API từ Part 1 theo yêu cầu Reviewer thay vì tự viết lại
 from part1.gaussian import gaussian_eliminate
-
 
 # ============================================================================
 #  HÀM PHỤ TRỢ (Utility helpers)
 # ============================================================================
+
 
 def _forward_substitution(L, b):
     n = len(b)
@@ -54,7 +53,7 @@ def _is_strictly_diag_dominant(A):
 
 def _is_spd(A):
     """
-    Kiểm tra ma trận A có đối xứng xác định dương (SPD) hay không bằng list nguyên thuỷ.
+    Kiểm tra ma trận A có đối xứng xác định dương (SPD) hay không bằng list.
     Dùng phân rã Cholesky tự cài đặt để bắt lỗi nếu ma trận không xác định dương.
     """
     n = len(A)
@@ -63,8 +62,8 @@ def _is_spd(A):
         for j in range(i + 1, n):
             if abs(A[i][j] - A[j][i]) > 1e-10:
                 return False
-    
-    # Kiểm tra xác định dương bằng phân rã Cholesky (chỉ tạo nháp để tránh ảnh hưởng)
+
+    # Kiểm tra xác định dương bằng phân rã Cholesky
     L = [[0.0] * n for _ in range(n)]
     try:
         for i in range(n):
@@ -86,26 +85,24 @@ def _is_spd(A):
 #  1. PHƯƠNG PHÁP KHỬ GAUSS VỚI PARTIAL PIVOTING
 # ============================================================================
 
+
 def solve_gauss(A, b):
-    """
-    Giải hệ phương trình Ax=b bằng cách gọi trực tiếp API từ Part 1
-    nhằm đảm bảo tính tái sử dụng và nguyên tắc DRY (Don't Repeat Yourself).
-    """
     ref_augmented, solution_info, swap_count = gaussian_eliminate(A, b)
-    
+
     if solution_info.get("type") == "unique":
         return solution_info["x"]
     else:
-        raise ValueError(f"Hệ phương trình không có nghiệm duy nhất. Chi tiết: {solution_info.get('message', 'N/A')}")
+        raise ValueError(f"Hệ phương trình không có nghiệm duy nhất.")
 
 
 # ============================================================================
 #  2. PHÂN RÃ LU VỚI PARTIAL PIVOTING  (PA = LU)
 # ============================================================================
 
+
 def lu_decompose(A):
     n = len(A)
-    # Khởi tạo U, L, P bằng nested list thuần túy
+    # Khởi tạo U, L, P bằng nested list
     U = [[float(A[i][j]) for j in range(n)] for i in range(n)]
     L = [[1.0 if i == j else 0.0 for j in range(n)] for i in range(n)]
     P = [[1.0 if i == j else 0.0 for j in range(n)] for i in range(n)]
@@ -157,8 +154,9 @@ def solve_lu(A, b):
 
 
 # ============================================================================
-#  3. PHƯƠNG PHÁP LẶP GAUSS–SEIDEL
+#  3. PHƯƠNG PHÁP LẶP GAUSS-SEIDEL
 # ============================================================================
+
 
 def solve_gauss_seidel(A, b, tol=1e-8, max_iter=2000):
     n = len(A)
@@ -166,20 +164,21 @@ def solve_gauss_seidel(A, b, tol=1e-8, max_iter=2000):
     spd = _is_spd(A)
 
     if diag_dominant:
-        pass # Tắt print để console benchmark sạch sẽ
+        pass
     elif spd:
         pass
     else:
         warnings.warn(
-            "[Gauss-Seidel] ⚠ Ma trận KHÔNG chéo trội nghiêm ngặt/SPD. "
-            "Thuật toán có thể phân kỳ!",
+            "Ma trận không chéo trội nghiêm ngặt/SPD" "Thuật toán có thể phân kỳ!",
             UserWarning,
             stacklevel=2,
         )
 
     for i in range(n):
         if abs(A[i][i]) < 1e-15:
-            raise ValueError(f"Phần tử đường chéo a[{i},{i}] ≈ 0. Không thể gọi Gauss-Seidel.")
+            raise ValueError(
+                f"Phần tử đường chéo a[{i},{i}] xấp xỉ 0 nên không thể gọi Gauss-Seidel."
+            )
 
     x = [0.0] * n
     for iteration in range(1, max_iter + 1):
@@ -195,7 +194,7 @@ def solve_gauss_seidel(A, b, tol=1e-8, max_iter=2000):
             return x, iteration
 
     warnings.warn(
-        f"[Gauss-Seidel] Chưa hội tụ sau {max_iter} lặp (||Δx|| = {diff_norm:.2e}).",
+        f"Chưa hội tụ sau {max_iter} lặp (||delta_x|| = {diff_norm:.2e}).",
         UserWarning,
         stacklevel=2,
     )
@@ -203,8 +202,9 @@ def solve_gauss_seidel(A, b, tol=1e-8, max_iter=2000):
 
 
 # ============================================================================
-#  HÀM KIỂM CHỨNG KẾT QUẢ (NumPy CHỈ DÙNG ĐỂ KIỂM CHỨNG NHƯ GIẢNG VIÊN YÊU CẦU)
+#  HÀM KIỂM CHỨNG KẾT QUẢ
 # ============================================================================
+
 
 def verify_solution(A, x, b, method_name=""):
     A_np = np.array(A, dtype=float)
@@ -218,42 +218,37 @@ def verify_solution(A, x, b, method_name=""):
     sol_diff = np.linalg.norm(x_np - x_numpy, 2) / (np.linalg.norm(x_numpy, 2) + 1e-30)
 
     tag = f"[{method_name}] " if method_name else ""
-    print(f"{tag}Sai số tương đối ||Ax̂−b||/||b|| = {rel_error:.4e}")
-    print(f"{tag}Sai lệch so với chuẩn hệ thống     = {sol_diff:.4e}")
+    print(f"{tag}Sai số tương đối ||Ax-b||/||b|| = {rel_error:.4e}")
+    print(f"{tag}Sai lệch so với chuẩn hệ thống = {sol_diff:.4e}")
     return rel_error
 
 
 if __name__ == "__main__":
-    print("=" * 60)
-    print("  DEMO: Giải hệ phương trình 100% bằng PURE PYTHON LISTS")
-    print("=" * 60)
-
     n = 5
     np.random.seed(42)
-    # Tạo ma trận test (Bọc tolist() để thành list)
+    # Tạo ma trận test
     A = (np.random.rand(n, n) + n * np.eye(n)).tolist()
     x_true = [1.0, 2.0, 3.0, 4.0, 5.0]
     b = (np.array(A) @ np.array(x_true)).tolist()
 
-    # Đoạn in code cũng xử lý list
-    print("\nMa trận A (Dạng Python List của List):")
+    print("\nMa trận A:")
     for r in A:
-        print("  " + " ".join(f"{val:6.2f}" for val in r))
-        
+        print(" ".join(f"{val:6.2f}" for val in r))
+
     print(f"\nVector b = {[round(val, 4) for val in b]}")
     print(f"Nghiệm thực (chuẩn) = {x_true}")
 
-    print("\n─── 1. Khử Gauss (Partial Pivoting) ───")
+    print("\n=== 1. Khử Gauss (Partial Pivoting) ===")
     x1 = solve_gauss(A, b)
     print(f"  x = {[round(v, 4) for v in x1]}")
     verify_solution(A, x1, b, "Gauss")
 
-    print("\n─── 2. Phân rã LU ───")
+    print("\n=== 2. Phân rã LU ===")
     x2 = solve_lu(A, b)
     print(f"  x = {[round(v, 4) for v in x2]}")
     verify_solution(A, x2, b, "LU")
 
-    print("\n─── 3. Gauss–Seidel (Lặp) ───")
+    print("\n=== 3. Gauss-Seidel (Lặp) ===")
     x3, iters = solve_gauss_seidel(A, b)
-    print(f"  x = {[round(v, 4) for v in x3]}  (hội tụ sau {iters} bước)")
+    print(f"x = {[round(v, 4) for v in x3]}  (hội tụ sau {iters} bước)")
     verify_solution(A, x3, b, "Gauss-Seidel")

@@ -2,7 +2,7 @@
 =============================================================================
   Phần 3 — benchmark.py
   Chạy thực nghiệm đo hiệu năng và phân tích tính ổn định số học.
-  
+
   Hai nhóm thực nghiệm:
     A) Đo thời gian thực thi & sai số tương đối cho n ∈ {50,100,200,500,1000}
     B) Phân tích ổn định: ma trận Hilbert (ill-conditioned) vs SPD (well-cond.)
@@ -21,7 +21,6 @@ import csv
 # Thêm đường dẫn để import solvers
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from solvers import solve_gauss, solve_lu, solve_gauss_seidel
-
 
 # ============================================================================
 #  CẤU HÌNH
@@ -47,10 +46,10 @@ SIZES_SPD_STABILITY = [5, 10, 20, 50, 100]
 #  HÀM SINH MA TRẬN
 # ============================================================================
 
+
 def generate_diag_dominant_matrix(n, seed=None):
     """
-    Sinh ma trận chéo trội nghiêm ngặt nxn.
-    A = random(n,n) + n * I  →  đảm bảo |a_ii| > Σ_{j≠i} |a_ij|.
+    Sinh ma trận chéo trội nghiêm ngặt nxn
     """
     if seed is not None:
         np.random.seed(seed)
@@ -60,20 +59,19 @@ def generate_diag_dominant_matrix(n, seed=None):
 
 def generate_hilbert_matrix(n):
     """
-    Sinh ma trận Hilbert H_n có phần tử H_{ij} = 1 / (i + j - 1).
+    Sinh ma trận Hilbert H_n có phần tử H_{ij} = 1/(i+j-1)
     Ma trận Hilbert có số điều kiện cực lớn (ill-conditioned).
     """
     H = np.zeros((n, n), dtype=float)
     for i in range(n):
         for j in range(n):
-            H[i, j] = 1.0 / (i + j + 1)    # index 0-based nên (i+1)+(j+1)-1 = i+j+1
+            H[i, j] = 1.0 / (i + j + 1)  # index 0-based nên (i+1)+(j+1)-1 = i+j+1
     return H
 
 
 def generate_spd_matrix(n, seed=None):
     """
-    Sinh ma trận đối xứng xác định dương (SPD) ngẫu nhiên nxn.
-    A = M @ M^T + I  →  đảm bảo SPD.
+    Sinh ma trận đối xứng xác định dương (SPD) ngẫu nhiên nxn
     """
     if seed is not None:
         np.random.seed(seed)
@@ -83,13 +81,17 @@ def generate_spd_matrix(n, seed=None):
 
 
 def relative_error(A, x_hat, b):
-    """Tính sai số tương đối: ||Ax̂ - b||₂ / ||b||₂"""
+    """
+    Tính sai số tương đối
+    """
     residual = A @ x_hat - b
     return np.linalg.norm(residual, 2) / np.linalg.norm(b, 2)
 
 
 def solution_error(x_hat, x_true):
-    """Tính sai số nghiệm: ||x̂ - x_true||₂ / ||x_true||₂"""
+    """
+    Tính sai số nghiệm
+    """
     return np.linalg.norm(x_hat - x_true, 2) / (np.linalg.norm(x_true, 2) + 1e-30)
 
 
@@ -97,13 +99,14 @@ def solution_error(x_hat, x_true):
 #  THỰC NGHIỆM A — Đo thời gian & sai số theo kích thước n
 # ============================================================================
 
+
 def run_timing_benchmark():
     """
     Đo thời gian thực thi trung bình (5 lần chạy) và sai số tương đối
     cho mỗi phương pháp với n ∈ {50, 100, 200, 500, 1000}.
     """
     print("=" * 70)
-    print("  THỰC NGHIỆM A: Đo thời gian thực thi & sai số tương đối")
+    print("THỰC NGHIỆM A: Đo thời gian thực thi & sai số tương đối")
     print("=" * 70)
 
     results = []
@@ -115,7 +118,7 @@ def run_timing_benchmark():
 
         # Sinh ma trận chéo trội (đảm bảo Gauss-Seidel hội tụ)
         A = generate_diag_dominant_matrix(n, seed=42)
-        x_true = np.ones(n)             # nghiệm thực = vector toàn 1
+        x_true = np.ones(n)  # nghiệm thực = vector toàn 1
         b = A @ x_true
 
         methods = {
@@ -136,19 +139,22 @@ def run_timing_benchmark():
             rel_err = relative_error(A, x_hat, b)
             sol_err = solution_error(x_hat, x_true)
 
-            print(f"  {name:15s} | t_avg = {avg_time:.6f}s | "
-                  f"res_err = {rel_err:.4e} | sol_err = {sol_err:.4e}")
+            print(
+                f"  {name:15s} | t_avg = {avg_time:.6f}s | "
+                f"res_err = {rel_err:.4e} | sol_err = {sol_err:.4e}"
+            )
 
-            results.append({
-                "n": n,
-                "method": name,
-                "avg_time": avg_time,
-                "relative_error": rel_err,
-                "solution_error": sol_err,
-            })
+            results.append(
+                {
+                    "n": n,
+                    "method": name,
+                    "avg_time": avg_time,
+                    "relative_error": rel_err,
+                    "solution_error": sol_err,
+                }
+            )
 
         # Gauss-Seidel
-        # Tắt print bên trong solve_gauss_seidel khi benchmark
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", UserWarning)
             times_gs = []
@@ -165,23 +171,29 @@ def run_timing_benchmark():
             sol_err_gs = solution_error(x_hat_gs, x_true)
             avg_iters = iters_total / NUM_RUNS
 
-            print(f"  {'Gauss-Seidel':15s} | t_avg = {avg_time_gs:.6f}s | "
-                  f"res_err = {rel_err_gs:.4e} | sol_err = {sol_err_gs:.4e} | "
-                  f"avg_iters = {avg_iters:.0f}")
+            print(
+                f"  {'Gauss-Seidel':15s} | t_avg = {avg_time_gs:.6f}s | "
+                f"res_err = {rel_err_gs:.4e} | sol_err = {sol_err_gs:.4e} | "
+                f"avg_iters = {avg_iters:.0f}"
+            )
 
-            results.append({
-                "n": n,
-                "method": "Gauss-Seidel",
-                "avg_time": avg_time_gs,
-                "relative_error": rel_err_gs,
-                "solution_error": sol_err_gs,
-            })
+            results.append(
+                {
+                    "n": n,
+                    "method": "Gauss-Seidel",
+                    "avg_time": avg_time_gs,
+                    "relative_error": rel_err_gs,
+                    "solution_error": sol_err_gs,
+                }
+            )
 
     # Lưu kết quả ra CSV
     csv_path = os.path.join(RESULTS_DIR, "timing_benchmark.csv")
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=["n", "method", "avg_time",
-                                               "relative_error", "solution_error"])
+        writer = csv.DictWriter(
+            f,
+            fieldnames=["n", "method", "avg_time", "relative_error", "solution_error"],
+        )
         writer.writeheader()
         writer.writerows(results)
 
@@ -193,14 +205,15 @@ def run_timing_benchmark():
 #  THỰC NGHIỆM B — Phân tích ổn định số (Stability Analysis)
 # ============================================================================
 
+
 def run_stability_benchmark():
     """
     So sánh tính ổn định số khi giải hệ với:
-      - Ma trận Hilbert (ill-conditioned, κ rất lớn)
-      - Ma trận SPD ngẫu nhiên (well-conditioned, κ nhỏ)
+        - Ma trận Hilbert (ill-conditioned, κ rất lớn)
+        - Ma trận SPD ngẫu nhiên (well-conditioned, κ nhỏ)
     """
     print("\n" + "=" * 70)
-    print("  THỰC NGHIỆM B: Phân tích Ổn định Số (Stability Analysis)")
+    print("THỰC NGHIỆM B: Phân tích Ổn định Số (Stability Analysis)")
     print("=" * 70)
 
     results = []
@@ -208,8 +221,10 @@ def run_stability_benchmark():
     # --- B1. Ma trận Hilbert (ill-conditioned) ---
     print("\n B1. Ma trận Hilbert (Ill-conditioned)")
     print(f"{'-' * 60}")
-    print(f"  {'n':>4s} | {'κ(H_n)':>15s} | {'Gauss err':>12s} | "
-          f"{'LU err':>12s} | {'G-S err':>12s}")
+    print(
+        f"  {'n':>4s} | {'κ(H_n)':>15s} | {'Gauss err':>12s} | "
+        f"{'LU err':>12s} | {'G-S err':>12s}"
+    )
     print(f"{'-' * 60}")
 
     for n in SIZES_HILBERT:
@@ -240,22 +255,27 @@ def run_stability_benchmark():
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                x_gs, iters = solve_gauss_seidel(H.tolist(), b.tolist(),
-                                                  tol=1e-10, max_iter=5000)
+                x_gs, iters = solve_gauss_seidel(
+                    H.tolist(), b.tolist(), tol=1e-10, max_iter=5000
+                )
             err_gs = solution_error(x_gs, x_true)
         except Exception:
             err_gs = float("inf")
         row["error_GaussSeidel"] = err_gs
 
         results.append(row)
-        print(f"  {n:4d} | {cond_num:15.4e} | {err_g:12.4e} | "
-              f"{err_lu:12.4e} | {err_gs:12.4e}")
+        print(
+            f"  {n:4d} | {cond_num:15.4e} | {err_g:12.4e} | "
+            f"{err_lu:12.4e} | {err_gs:12.4e}"
+        )
 
     # --- B2. Ma trận SPD ngẫu nhiên (well-conditioned) ---
     print(f"\n B2. Ma trận SPD ngẫu nhiên (Well-conditioned)")
     print(f"{'-' * 60}")
-    print(f"  {'n':>4s} | {'κ(A)':>15s} | {'Gauss err':>12s} | "
-          f"{'LU err':>12s} | {'G-S err':>12s}")
+    print(
+        f"  {'n':>4s} | {'κ(A)':>15s} | {'Gauss err':>12s} | "
+        f"{'LU err':>12s} | {'G-S err':>12s}"
+    )
     print(f"{'-' * 60}")
 
     for n in SIZES_SPD_STABILITY:
@@ -286,24 +306,34 @@ def run_stability_benchmark():
         try:
             with warnings.catch_warnings():
                 warnings.simplefilter("ignore")
-                x_gs, iters = solve_gauss_seidel(A_spd.tolist(), b.tolist(),
-                                                  tol=1e-10, max_iter=5000)
+                x_gs, iters = solve_gauss_seidel(
+                    A_spd.tolist(), b.tolist(), tol=1e-10, max_iter=5000
+                )
             err_gs = solution_error(x_gs, x_true)
         except Exception:
             err_gs = float("inf")
         row["error_GaussSeidel"] = err_gs
 
         results.append(row)
-        print(f"  {n:4d} | {cond_num:15.4e} | {err_g:12.4e} | "
-              f"{err_lu:12.4e} | {err_gs:12.4e}")
+        print(
+            f"  {n:4d} | {cond_num:15.4e} | {err_g:12.4e} | "
+            f"{err_lu:12.4e} | {err_gs:12.4e}"
+        )
 
     # Lưu kết quả ra CSV
     csv_path = os.path.join(RESULTS_DIR, "stability_benchmark.csv")
     with open(csv_path, "w", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=[
-            "n", "matrix_type", "condition_number",
-            "error_Gauss", "error_LU", "error_GaussSeidel"
-        ])
+        writer = csv.DictWriter(
+            f,
+            fieldnames=[
+                "n",
+                "matrix_type",
+                "condition_number",
+                "error_Gauss",
+                "error_LU",
+                "error_GaussSeidel",
+            ],
+        )
         writer.writeheader()
         writer.writerows(results)
 
@@ -322,6 +352,5 @@ if __name__ == "__main__":
     stability_results = run_stability_benchmark()
 
     print("\n" + "=" * 70)
-    print("  ĐÃ HOÀN THÀNH TẤT CẢ THỰC NGHIỆM!")
     print(f"  Kết quả lưu tại thư mục: {RESULTS_DIR}")
     print("=" * 70)
