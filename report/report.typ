@@ -50,7 +50,7 @@
 )
 
 // = phần chính
-#show heading.where(level: 1): it => [#text(fill: title-color, font: body-font, size: 20pt)[#it] #v(0.8em)]
+#show heading.where(level: 1): it => [#text(fill: title-color, font: body-font, size: 22pt)[#it] #v(0.8em)]
 #show heading.where(level: 1):  it => if true {pagebreak(weak: true);it} else {it}
 
 // == phụ lục cấp 2
