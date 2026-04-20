@@ -1,86 +1,139 @@
+// module
+#import "@preview/chic-hdr:0.5.0":*
+#import "@preview/equate:0.3.2":*
+
+// constraint
+#import "theme.typ": *
+
+// page + text + paragraph
 #set page(
   paper: "a4",
   margin: (x: 2.5cm, y: 2.5cm),
 )
 
 #set text(
-  font: "Times New Roman",
-  size: 12.5pt,
+  font: body_font,
+  size: 11.5pt,
+  fill: body_color,
+  lang: "vi",
 )
 
+#set par(
+  justify: true,
+  first-line-indent: (amount: 1.2em, all: true),
+  leading: 0.72em,
+)
+
+#set list(indent: 1.5em)
+
+// numbering
 #set heading(
-  numbering: "1.",
+  numbering: "1.1",
+  supplement: [Mục],
 )
 
-#align(center)[
-  #text(14pt, weight: "bold")[TRƯỜNG ĐẠI HỌC KHOA HỌC TỰ NHIÊN]  
-  
-  #text(13pt)[KHOA CÔNG NGHỆ THÔNG TIN]
-  #v(2.5cm)
-  #text(16pt, weight: "bold")[BÁO CÁO ĐỒ ÁN 1]
-  #v(0.5cm)
-  #text(22pt, weight: "bold")[Ma Trận và Cơ Sở của Tính Toán Khoa Học]
-  #v(1cm)
-  #text(14pt)[Môn học: Toán Ứng Dụng và Thống Kê]
+// = phần chính
+#show heading.where(level: 1): it => {
+  let nums = counter(heading).at(it.location())
+  let s = nums.map(str).join(".")
+  pagebreak(weak: true)
+  v(0.2em)
+  if it.numbering != none {
+    let nums = counter(heading).at(it.location())
+    let s = nums.map(str).join(".")
+    text(fill: title_color, font: body_font, size: 20pt)[
+      #s #h(0.1em)
+      #box(width: 1.2pt, height: 1.1em, fill: title_color.darken(30%), baseline: 20%)
+      #h(0.2em)
+      #it.body
+    ]
+  } else {
+    text(fill: title_color, font: body_font, size: 20pt)[
+      #it.body
+    ]
+  }
+  v(0.8em)
+}
 
-  #v(2cm)
+// == phụ lục cấp 2
+#show heading.where(level: 2): it => [
+  #text(font: body_font, size: 16pt, fill: title_color,)[#it]
 ]
 
-#align(left)[
-  *Thành viên thực hiện:*  
-  - Nguyễn Ngọc Quang --- MSSV: 24120127
-  - Đặng Quang Tiến --- MSSV: 24120149
-  - Liên Trung Hiếu --- MSSV: 24120049
-  - Trương Đình Nhật Huy --- MSSV: 24120064 
-  - Đinh Đức Hiếu --- MSSV: 24120002
+// === phụ lục cấp 3
+#show heading.where(level: 3): it => [
+  #text(font: body_font, fill: title_color,)[#it] #v(0.5em)
+]
+#show heading.where(level: 3): set heading(outlined: false)
 
-  #v(0.8cm)
 
-  *Giảng viên hướng dẫn:*  
-  - ThS. Võ Nam Thục Đoan  
-  - ThS. Lê Nhựt Nam  
+// non-numbering
+#show selector(<nonumber>): set heading(
+  numbering: none
+)
+
+// non-outlined
+#show selector(<nooutlined>): set heading(
+  outlined: false,
+)
+
+// math
+#set math.equation(numbering: "(1.1)")
+#show: equate.with(breakable: true, sub-numbering: true)
+
+// figure caption
+#show figure.caption: it => [
+  #set text(size: 10pt, fill: soft_color)
+  #strong[#it.supplement #it.counter.display(it.numbering)]
+  #it.separator
+  #it.body
 ]
 
-#v(5cm)
+#show figure.where(kind: table): set figure.caption(position: top)
 
-#align(center)[
-  TP. Hồ Chí Minh, ngày 20 tháng 4 năm 2026
-]
+// table
+#show table.cell: set par(
+  justify: false,
+  first-line-indent: 0em,
+)
 
+//// end of config
+#include "chapters/cover.typ"
 #pagebreak()
 
-#outline(title: [Mục lục])
-
-#pagebreak()
-
-#let intro() = [
-= Giới thiệu đồ án
-
-Đồ án này tập trung vào ba nhóm nội dung chính: phép khử Gauss và các ứng dụng, phân rã ma trận kết hợp trực quan hóa, và phân tích hiệu năng cũng như tính ổn định số. Mục tiêu không chỉ là cài đặt thuật toán từ đầu bằng Python mà còn phải hiểu rõ bản chất toán học, kiểm chứng kết quả và trình bày lại bằng báo cáo cùng video minh họa.
-
-Trong quá trình thực hiện, nhóm thống nhất sử dụng Python làm ngôn ngữ chính, kết hợp với các thư viện hỗ trợ để kiểm chứng, trực quan hóa và phân tích kết quả. Phần cài đặt thuật toán được viết theo hướng tự xây dựng lại từ đầu, còn các thư viện như NumPy hoặc SciPy chỉ được dùng cho mục đích đối chiếu và kiểm chứng.
-
-Báo cáo được tổ chức thành ba phần tương ứng với yêu cầu của đề bài. Phần đầu trình bày phép khử Gauss và các ứng dụng trực tiếp. Phần hai tập trung vào phân rã ma trận, chéo hóa và video Manim. Phần ba trình bày thực nghiệm benchmark, phân tích sai số và đánh giá tính ổn định số.
-]
-
-#intro()
+// header/footer
+#let hf-style(body) = text(fill: rgb("#677CA6"), size: 10pt, body)
 
 
-= Đồ án 1 - Ma trận
 
-== Giới thiệu
+// Mục lục
+#counter(page).update(1)
+#show: chic.with(
+  chic-header(
+    left-side: hf-style[*FIT-HCMUS*],
+    right-side: hf-style[*University of Science - VNUHCM*],
+  ),
+  chic-footer(
+    left-side: hf-style[*Toán ứng dụng và thống kê*],
+    right-side: hf-style(strong(context [#counter(page).display() / #counter(page).final().at(0)])),
+  ),
+  chic-separator(0.6pt + rgb("#A5B4D6")),
+  chic-offset(14pt),
+)
 
-Đây là báo cáo viết bằng Typst.
+#show outline.entry.where(level: 1): it => {
+  v(12pt, weak: true)
+  strong(text(fill: title_color, it))
+}
 
-== Công thức
+#outline(title: [Mục lục], depth: 3, indent: auto)
 
-$ A x = b $
+#include "chapters/group_work.typ"
 
-== Ma trận
-
-$ mat(
-  1, 2;
-  3, 4
-) $
-
-
+#include "chapters/intro.typ"
+#include "chapters/part1_gauss.typ"
+#include "chapters/part2_decomposition.typ"
+#include "chapters/part3_solve_analysis.typ"
+#include "chapters/conclude.typ"
+#include "chapters/appendix.typ"
+#include "chapters/references.typ"

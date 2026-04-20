@@ -1,0 +1,145 @@
+#import "../theme.typ": *
+= Phép khử Gauss và ứng dụng <sec:gauss>
+
+== Cài đặt thuật toán
+// === Các hàm phu trợ
+// Các hàm phụ trợ có tác dụng chuẩn hóa dữ liệu đầu vào và thao tác ma trận. 
+// - Nguồn: `utils.py`.
+// - Bao gồm:
+//     - `_to_matrix` : 
+//     - `_to_vector` :
+//     - `_shape` :
+//     - `_copy_matrix` :
+//     - `identity` :
+//     - `_clean_small_entries` :
+//     - `_augment` :
+//     - `_swap_rows` :
+=== `gaussian_eliminate(A, b)`
+_Mục tiêu_: giải hệ $A x = b$ bằng phép khử Gauss và phân loại loại nghiệm theo 3 trường hợp: có nghiệm duy nhất, có vô số nghiệm hoặc vô nghiệm.
+
+_Đầu vào_: ma trận hệ số kích thước $m times n$ (kí hiệu: $A$), vector vế phải kích thước $m times 1$ (kí hiệu: $b$), ngưỡng nhận diện số gần bằng 0 (kí hiệu: $epsilon$, tùy chọn với giá trị mặc định $10^(-12)$).
+
+_Đầu ra_: ma trận tăng cường ở dạng `REF`, một cấu trúc `solution_info` mô tả loại nghiệm và nội dung nghiệm, cùng với `swap_count` là số lần hoán đổi dòng.
+
+_Ý tưởng thuật toán:_
+Trước hết, hệ được viết dưới dạng ma trận tăng cường $[A | b]$. Thuật toán thực hiện khử Gauss có `partial pivoting`: ở mỗi cột, chọn phần tử có trị tuyệt đối lớn nhất làm `pivot` để giảm rủi ro chia cho số quá nhỏ. Sau khi khử về dạng `REF`, hệ được phân loại như sau:
+
+- Nếu xuất hiện hàng $[0 space dots space 0 | c]$ với $c != 0$, hệ vô nghiệm;
+- Nếu số cột `pivot` bằng số ẩn, hệ có nghiệm duy nhất;
+- Nếu còn cột tự do, hệ có vô số nghiệm.
+
+_Cách cài đặt:_
+Trong code, ma trận tăng cường được tạo bằng `_augment`. Bước khử tiến được thực hiện trong `_forward_elimination_ref`, đồng thời theo dõi `pivot_columns`, `swap_count` và cảnh báo nếu `pivot` quá nhỏ. Từ kết quả khử, quá trình phân nhánh theo từng loại nghiệm:
+- Nếu xuất hiện hàng mâu thuẫn thì trả về hệ vô nghiệm;
+- Nếu hệ có nghiệm duy nhất, chương trình tách hệ tam giác trên bằng `_extract_upper_system` rồi chuyển cho `back_substitution`.
+- Nếu hệ có vô số nghiệm, chương trình dùng `_rref` và `_build_general_solution_from_rref` để dựng nghiệm tổng quát.
+
+Cách tổ chức này giúp phần cài đặt bám sát đúng ba trường hợp đã nêu trong phần ý tưởng thuật toán, đồng thời làm cho từng nhánh xử lý có thể được kiểm tra độc lập.
+
+=== `back_substitution(U, c, eps)`
+_Mục tiêu:_
+Giải hệ tam giác trên $U x = c$ trong trường hợp hệ có nghiệm duy nhất.
+
+_Đầu vào_:
+Ma trận tam giác trên $U$, vector vế phải $c$, và ngưỡng $epsilon$.
+
+_Đầu ra:_
+Vector nghiệm $x$.
+
+_Ý tưởng thuật toán:_
+Thực hiện thế ngược từ hàng cuối lên hàng đầu. Ở mỗi bước, một ẩn được tính dựa trên các ẩn đã biết trước đó.
+
+_Cách cài đặt:_
+Hàm duyệt chỉ số hàng từ cuối về đầu, tính phần tổng các hạng tử đã biết rồi suy ra giá trị của ẩn hiện tại. Nếu phần tử trên đường chéo chính quá nhỏ hoặc bằng 0, hàm báo lỗi vì không thể tiếp tục thế ngược.
+
+=== `determinant(A, eps)`
+_Mục tiêu:_
+Tính định thức của ma trận vuông.
+
+_Đầu vào_:
+Ma trận vuông `A` và ngưỡng `eps`.
+
+_Đầu ra:_
+Giá trị định thức của ma trận.
+
+_Ý tưởng thuật toán:_
+Đưa ma trận về dạng tam giác trên bằng phép khử Gauss. Khi đó, định thức được tính bằng tích các phần tử trên đường chéo. Nếu có đổi dòng, dấu của định thức thay đổi theo số lần hoán đổi.
+
+_Cách cài đặt:_
+Hàm tái sử dụng `_forward_elimination_ref` để nhận ma trận sau khử và `swap_count`. Sau đó tính tích các phần tử đường chéo và nhân với dấu $(-1)^s$. Nếu đầu vào không phải ma trận vuông $A$, hàm báo lỗi.
+
+=== `inverse(A, eps)`
+_Mục tiêu:_
+Tính ma trận nghịch đảo $A^(-1)$.
+
+_Đầu vào_:
+Ma trận vuông `A` và ngưỡng `eps`.
+
+_Đầu ra:_
+Ma trận nghịch đảo của A.
+
+_Ý tưởng thuật toán:_
+Dùng phương pháp `Gauss-Jordan` trên ma trận ghép $[A | I]$. Nếu đưa được vế trái về ma trận đơn vị $I$, thì vế phải chính là $A^(-1)$.
+
+_Cách cài đặt:_
+Hàm ghép $A$ với ma trận đơn vị cùng kích thước. Với mỗi cột, chương trình chọn `pivot` phù hợp, đổi dòng nếu cần, chuẩn hóa dòng `pivot` rồi khử tất cả các dòng còn lại. Sau khi hoàn tất, phần bên phải của ma trận ghép được tách ra làm ma trận nghịch đảo. Nếu không chọn được `pivot` hợp lệ, hàm báo lỗi do ma trận suy biến.
+
+=== `rank_and_basis(A, eps)`
+
+_Mục tiêu:_
+Tính hạng của ma trận và xác định các cơ sở liên quan.
+
+_Đầu vào_:
+Ma trận $A$ và ngưỡng $epsilon$.
+
+_Đầu ra:_
+Một cấu trúc dữ liệu chứa `rank, pivot_columns`, `free_columns`, `column_space_basis`, `row_space_basis` và `null_space_basis`.
+
+Từ dạng `RREF`, số cột `pivot` cho biết hạng ma trận. Các cột `pivot` của ma trận gốc tạo thành cơ sở không gian cột; các dòng khác $0$ của `RREF` tạo thành cơ sở không gian dòng; các cột tự do được dùng để dựng cơ sở không gian nghiệm (`Nullspace`).
+
+_Cách cài đặt:_
+Hàm gọi `_rref` để lấy ma trận rút gọn và danh sách `pivot_columns`. Từ đó, chương trình suy ra `free_columns` và lần lượt dựng các basis tương ứng. Đây là bước chuyển trực tiếp từ khái niệm toán học sang cấu trúc dữ liệu có thể dùng tiếp trong code.
+
+=== `verify_solution(A, x, b, tol)`
+_Mục tiêu:_
+Kiểm chứng nghiệm hoặc thông tin nghiệm do phần cài đặt chính trả về.
+
+_Đầu vào_:
+Ma trận $A$, nghiệm hoặc `solution_info`, vector $b$, và ngưỡng $tau$.
+
+_Đầu ra_:
+Một cấu trúc chứa `is_close`, `residual_norm`, `Relative_residual` và nghiệm tham chiếu từ `NumPy`.
+
+_Ý tưởng thuật toán:_
+Không tham gia vào phần tính toán lõi. Hàm này chỉ dùng để đối chiếu kết quả và đo mức độ sai số thông qua `residual`.
+
+_Cách cài đặt:_
+Nếu đầu vào là nghiệm duy nhất hoặc nghiệm riêng của hệ vô số nghiệm, hàm chuyển sang mảng `NumPy` để kiểm tra $A x approx b$. Nếu đầu vào thuộc nhánh vô nghiệm, hàm báo lỗi thay vì cố kiểm tra một nghiệm không tồn tại.
+
+
+== Kiểm chứng và kết quả
+Sau khi hoàn thành phần cài đặt, các case tiêu biểu được sử dụng để kiểm tra thuật toán. Mục tiêu của phần này không chỉ là xác nhận chương trình chạy đúng, mà còn làm rõ ý nghĩa toán học của từng loại kết quả và đối chiếu với hành vi mong đợi của thuật toán.
+
+=== Ma trận khả nghịch nhỏ
+
+Trong trường hợp này, đồ án sử dụng một ma trận $3 times 3$ có tính chất đặc biệt: phần tử đầu tiên $A_(11)$ cực nhỏ ($10^(-10)$). Nếu không có `partial pivoting`, thuật toán sẽ chia cho một số gần bằng 0, dẫn đến sai số làm tròn cực lớn.
+
+- _Kết quả thực nghiệm_: Thuật toán nhận diện được phần tử chốt nhỏ, thực hiện hoán đổi dòng (`swap_count` $> 0$) để chọn `pivot` lớn hơn. Nghiệm tính toán có `Relative_residual` xấp xỉ $0$, hoàn toàn khớp với nghiệm tham chiếu từ `NumPy`. Điều này khẳng định tính ổn định của hàm `gaussian_eliminate` và `back_substitution`.
+
+=== Hệ có vô số nghiệm
+
+Khả năng phân loại hệ được kiểm chứng bằng một ma trận phụ thuộc tuyến tính kích thước $3 times 4$. Ở trường hợp này, mục tiêu không phải là một nghiệm duy nhất mà là cấu trúc của không gian nghiệm.
+
+- _Kết quả thực nghiệm_: Thuật toán trả về `type`: `infinite`. Kết quả bao gồm một nghiệm riêng (`particular solution`) và một hệ cơ sở của không gian nghiệm (`null_space_basis`). Việc kiểm chứng bằng $A x approx b$ trên nghiệm riêng cho kết quả chính xác, chứng minh hàm `_rref` và `_build_general_solution_from_rref` hoạt động đúng như thiết kế.
+
+=== Hệ vô nghiệm
+
+Để kiểm tra nhánh xử lý mâu thuẫn, một hệ phương trình không tương thích được đưa vào thực nghiệm.
+
+- _Kết quả thực nghiệm_: Sau bước khử tiến, thuật toán phát hiện hàng có dạng $[0 space dots space 0 | c]$ với $c != 0$. Chương trình dừng lại ngay lập tức và trả về `type`: `inconsistent`. Điều này bảo vệ hệ thống khỏi việc cố gắng tính toán trên một tập nghiệm rỗng.
+
+=== Hệ ill-conditioned và cảnh báo số học
+
+Trường hợp cuối cùng sử dụng ma trận có các dòng gần như song song (ví dụ: các hệ số lệch nhau $10^(-10)$).
+
+- _Kết quả thực nghiệm_: Thuật toán vẫn giải ra nghiệm nhưng đồng thời đưa ra cảnh báo `pivot` `is near zero`; `the system may be ill-conditioned`. Cảnh báo này cực kỳ quan trọng trong tính toán khoa học, giúp người dùng nhận thức được độ tin cậy của kết quả khi làm việc với ma trận nhạy cảm về số học.
