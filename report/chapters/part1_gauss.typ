@@ -1,5 +1,8 @@
 #import "../theme.typ": *
 = Phép khử Gauss và ứng dụng <sec:gauss>
+Phần này tập trung vào phép khử Gauss và các ứng dụng trực tiếp của nó trong đại số tuyến tính số. Thay vì chỉ sử dụng phép khử Gauss để giải hệ phương trình tuyến tính, nhóm khai thác cùng một ý tưởng biến đổi dòng để xây dựng các chức năng quan trọng khác như tính định thức, tìm ma trận nghịch đảo, xác định hạng và mô tả các cơ sở liên quan của ma trận.
+
+Vì các bài toán này có chung nền tảng toán học nhưng khác nhau ở đầu ra cần thu được, nhóm tổ chức phần cài đặt thành các hàm riêng biệt nhằm giúp việc kiểm thử, giải thích và tái sử dụng thuật toán được rõ ràng hơn.
 
 == Cài đặt thuật toán
 // === Các hàm phu trợ
