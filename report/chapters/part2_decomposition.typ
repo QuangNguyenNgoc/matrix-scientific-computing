@@ -1,15 +1,60 @@
-= *Phần 2:* Phân rã ma trận và trực quan hóa với Manim
-Trong phàn này, nhóm tập trung vào kỹ thuật phân rã ma trận và chéo hóa, trong đó nhóm lựa chọn phân rã kỳ dị SVD làm kỹ thuật chính. Lý do "..."
+#import "../theme.typ": *
+= Phân rã ma trận và trực quan hóa với Manim <sec:decomposition>
 
-Ngoài ra, nhóm có dùng Manim để trực quan hóa các kỹ thuật trên để có thể theo dõi quá trình phân rã và chéo hóa thông qua bài toán.
+== Chéo hóa ma trận (Diagonalization)
 
-== Ý tưởng chính
-*Chéo hóa (Diagonalization)*: Áp dụng Leverrier-Faddeev tìm phương trình đặc trưng rồi giải nghiệm đa thức bằng phương pháp lặp song song Durand-Kerner. Sau khi có $lambda$, thuật toán đưa về giải hệ thuần nhất bằng phương pháp Khử Gauss (với *Partial Pivoting* chọn dòng có trị tuyệt đối lớn nhất để khử làm mốc, đảm bảo tránh chia cho 0 và giảm thiểu sai số tính toán).
-tính chất trực giao vuông góc tuyệt đối.
+Thay vì thiết lập chéo hóa thành một mảng thuật toán phức tạp, phần cài đặt được thiết kế gọn gàng dựa trên ma trận demo. Cụ thể, đầu vào hàm sẽ tiếp nhận một nhóm ma trận kiểm thử đại diện và thực hiện chéo hóa nguyên bản từ đầu, bao gồm các công đoạn thuật toán số học chi tiết sau đối với nhóm ma trận nhỏ:
 
-*Phân rã SVD*: 
--Tính $A^T A$, mượn lại hàm `findEigen` bên chéo hóa để lấy các giá trị trị riêng $lambda_i >= 0$.
-- Trị kỳ dị $sigma_i = sqrt(lambda_i)$.
-- Tính các cột của $U$ qua công thức $u_i = (A dot v_i) / sigma_i$.
+- _Thiết lập đa thức đặc trưng (Thuật toán `Faddeev-LeVerrier`)_: Hàm trích xuất chuỗi hệ số của đa thức $c_n, c_(n-1), ...$ bằng kỹ thuật biến đổi trên vết (Trace) đệ quy của ma trận, né tránh được độ phức tạp bù trừ định thức cồng kềnh.
+- _Dò tìm Trị riêng (Phương pháp lặp `Durand-Kerner`)_: Thuật toán lặp đồng thời `Durand-Kerner` được triển khai để dò tìm trên không gian nghiệm phức, giúp giải chính xác toàn bộ rễ của đa thức (tức là Trị riêng).
+- _Dựng không gian Vector riêng_: Tái sử dụng thuật toán khử Gauss tìm hạng từ @sec:gauss, không gian nghiệm `Nullspace` của hệ ($A - lambda I$) được thiết lập tính toán. Các vector tìm được sẽ tiếp tục qua rây lọc _Trực chuẩn hóa `Gram-Schmidt`_ nhằm bảo toàn tuyệt đối không gian nền cơ sở.
 
-*Lưu ý tính trực giao (Orthogonality) và Liên tục*: Vì hỗ trợ ma trận không vuông $m times n$, hoăc khi có $sigma_i = 0$ (Null space), ma trận $U$ có xu hướng bị thiếu cột. Code đã tự động kết hợp chèn chuỗi trực giao hóa *Gram-Schmidt* đối diện với các vector cơ sở gốc (Standard Basis $e_k$) để sinh đủ các cột còn thiếu, giúp ma trận $U$ bảo toàn 100% kích cỡ $m times m$ và tính chất trực giao vuông góc tuyệt đối.
+Từ các nguyên liệu trên, chương trình sẽ kiểm tra tính chéo hóa khả thi của ma trận (có đủ $n$ vector cơ sở độc lập tuyến tính) nhằm hoàn thành bài toán tổng kết định dạng biểu diễn:
+$ A = P D P^(-1) $
+
+== Phân rã ma trận
+
+_Phân rã kỳ dị (Singular Value Decomposition - `SVD`)_ được chọn làm phương pháp cốt lõi để nghiên cứu.
+
+_Lý do lựa chọn:_ Khác với một số cách phân rã bị giới hạn bởi tính đối xứng hay dạng vuông của ma trận, `SVD` linh hoạt xử lý mọi kích cỡ ma trận $m times n$. Phân rã này phân tích mọi cấu trúc dữ liệu thành các phép biến đổi không gian trực quan (rotate-scale-rotate), tạo nền tảng vững chắc cho nhiều ứng dụng khoa học lớn như nén dữ liệu.
+
+_Thành phần cấu trúc và ý nghĩa:_
+Phân rã biến đổi ma trận gốc đầu vào $A$ thành hệ đầu ra 3 thành phần:
+$ A = U Sigma V^T $
+- _Đầu vào_: Ma trận $A$ bất kỳ ($m times n$).
+- _Đầu ra_: Ma trận chéo $Sigma$ chứa tập hợp _trị kỳ dị (singular values)_ đại diện cho mức độ co giãn. Bộ hệ cơ sở trực chuẩn $U$ (Left singular vectors) mô tả không gian đích và $V$ (Right singular vectors) đóng vai trò căn phối dữ liệu nguồn. Việc thu nhận phân tích giúp giải thích chính xác hệ thống tọa độ đang phóng to và dịch chuyển theo góc uốn nào.
+
+Cột thư viện ma trận $U$ được đối xứng qua biểu thức $u_i = (A dot v_i) / sigma_i$. Đặc biệt, tính ổn định luôn được đảm bảo: mỗi khi $A$ thất bại thiết lập trực giao do lỗi mất hạng (`Nullspace`), thuật toán thực hiện chèn trực giao hóa `Gram-Schmidt` kèm hệ cơ sở chuẩn để thu được toàn bộ các cột, đảm bảo cấu trúc $U$ giữ nguyên vẹn.
+
+== Thư viện trực quan hóa Manim
+
+`Manim` là một thư viện Python được thiết kế để tạo ra các hình ảnh động toán học chất lượng cao. Trong đồ án này, `Manim` được sử dụng để trực quan hóa các khái niệm trừu tượng của đại số tuyến tính, giúp dễ dàng nắm bắt các phép biến đổi ma trận, sự thay đổi cơ sở và các tính chất của trị riêng, vector riêng.
+
+Nội dung video xoay quanh:
+
+- abc
+- xyz 
+
+*Link video:* #link("https://www.youtube.com/watch?v=24120149")[https://www.youtube.com/watch?v=24120149]
+
+#let blank_img(name) = rect(
+  width: 100%,
+  height: 180pt,
+  fill: white,
+  stroke: 0.5pt + soft_color.lighten(50%),
+  radius: 4pt,
+)[
+  #set align(center + horizon)
+  #set text(fill: soft_color, size: 10pt)
+  [Hình ảnh minh họa: #name]
+]
+
+#figure(
+  blank_img("manim_svd_snapshot.png"),
+  caption: [Minh họa hệ vector thay đổi cơ sở và dãn không gian theo các trị kỳ dị (SVD)]
+) <fig:manim-svd>
+
+#figure(
+  blank_img("manim_eigen_snapshot.png"),
+  caption: [Tiến trình phát hiện và tính toán các đặc trưng giá trị riêng dựa trên sự bảo toàn phương hướng]
+) <fig:manim-eigen>

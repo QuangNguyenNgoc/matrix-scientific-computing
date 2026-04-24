@@ -3,12 +3,7 @@
 #import "@preview/equate:0.3.2":*
 
 // constraint
-#let title-color = rgb("#1E3778")
-#let body-color = rgb("#111111")
-#let soft-color = rgb("#666666")
-
-#let body-font = "Times New Roman"
-#let mono-font = "Consolas"
+#import "theme.typ": *
 
 // page + text + paragraph
 #set page(
@@ -17,9 +12,9 @@
 )
 
 #set text(
-  font: body-font,
+  font: body_font,
   size: 11.5pt,
-  fill: body-color,
+  fill: body_color,
   lang: "vi",
 )
 
@@ -33,42 +28,48 @@
 
 // numbering
 #set heading(
-   numbering: (..nums) => {
-    let s = nums.pos().map(str).join(".")
-    if nums.pos().len() == 1 {
-      // Style cho Level 1 (Số | Tiêu đề)
-      return [
-        #s #h(0.1em)
-        #box(width: 1.2pt, height: 1em, fill: title-color.darken(30%), baseline: 15%)
-        #h(0.1em)
-      ]
-    } else {
-      // Style cho Level 2, 3 (Số.)
-      return [#s.]
-    }
-  }
+  numbering: "1.1",
+  supplement: [Mục],
 )
 
 // = phần chính
-#show heading.where(level: 1): it => [#text(fill: title-color, font: body-font, size: 22pt)[#it] #v(0.8em)]
-#show heading.where(level: 1):  it => if true {pagebreak(weak: true);it} else {it}
+#show heading.where(level: 1): it => {
+  let nums = counter(heading).at(it.location())
+  let s = nums.map(str).join(".")
+  pagebreak(weak: true)
+  v(0.2em)
+  if it.numbering != none {
+    let nums = counter(heading).at(it.location())
+    let s = nums.map(str).join(".")
+    text(fill: title_color, font: body_font, size: 20pt)[
+      #s #h(0.1em)
+      #box(width: 1.2pt, height: 1.1em, fill: title_color.darken(30%), baseline: 20%)
+      #h(0.2em)
+      #it.body
+    ]
+  } else {
+    text(fill: title_color, font: body_font, size: 20pt)[
+      #it.body
+    ]
+  }
+  v(0.8em)
+}
 
 // == phụ lục cấp 2
 #show heading.where(level: 2): it => [
-  #text(font: body-font, size: 16pt, fill: title-color,)[#it]
+  #text(font: body_font, size: 16pt, fill: title_color,)[#it]
 ]
 
 // === phụ lục cấp 3
 #show heading.where(level: 3): it => [
-  #text(font: body-font, fill: title-color,)[#it] #v(0.5em)
+  #text(font: body_font, fill: title_color,)[#it] #v(0.5em)
 ]
 #show heading.where(level: 3): set heading(outlined: false)
 
 
 // non-numbering
 #show selector(<nonumber>): set heading(
-  numbering: none,
-  outlined: false,
+  numbering: none
 )
 
 // non-outlined
@@ -82,8 +83,8 @@
 
 // figure caption
 #show figure.caption: it => [
-  #set text(size: 10pt, fill: soft-color)
-  #strong[#it.supplement ~ #it.counter.display(it.numbering)]
+  #set text(size: 10pt, fill: soft_color)
+  #strong[#it.supplement #it.counter.display(it.numbering)]
   #it.separator
   #it.body
 ]
@@ -96,54 +97,43 @@
   first-line-indent: 0em,
 )
 
-// code block
-#let codeblock(lines) = block(
-  width: 100%,
-  fill: rgb("#F7F7F7"),
-  stroke: 0.6pt + rgb("#D6D6D6"),
-  inset: 10pt,
-  radius: 4pt,
-)[
-  #set text(font: mono-font, size: 9.5pt)
-  #set par(justify: false, first-line-indent: 0em)
-
-  #for (i, line) in lines.enumerate() [
-    #grid(
-      columns: (2em, 1fr),
-      gutter: 0.8em,
-      [
-        #align(right)[
-          #text(fill: soft-color)[#(i + 1)]
-        ]
-      ],
-      [#line],
-    )
-  ]
-]
-
 //// end of config
 #include "chapters/cover.typ"
-#include "chapters/group_work.typ"
-
-// Mục lục
-#outline(title: auto, depth: 3,indent: auto)
+#pagebreak()
 
 // header/footer
+#let hf-style(body) = text(fill: rgb("#677CA6"), size: 10pt, body)
+
+
+
+// Mục lục
+#counter(page).update(1)
 #show: chic.with(
   chic-header(
-    left-side: [FIT-HCMUS],
-    right-side: chic-heading-name(),
+    left-side: hf-style[*FIT-HCMUS*],
+    right-side: hf-style[*University of Science - VNUHCM*],
   ),
   chic-footer(
-    right-side: chic-page-number(),
+    left-side: hf-style[*Toán ứng dụng và thống kê*],
+    right-side: hf-style(strong(context [#counter(page).display() / #counter(page).final().at(0)])),
   ),
-  chic-separator(1pt),
+  chic-separator(0.6pt + rgb("#A5B4D6")),
   chic-offset(14pt),
 )
+
+#show outline.entry.where(level: 1): it => {
+  v(12pt, weak: true)
+  strong(text(fill: title_color, it))
+}
+
+#outline(title: [Mục lục], depth: 3, indent: auto)
+
+#include "chapters/group_work.typ"
 
 #include "chapters/intro.typ"
 #include "chapters/part1_gauss.typ"
 #include "chapters/part2_decomposition.typ"
 #include "chapters/part3_solve_analysis.typ"
-#include "chapters/conclusion.typ"
+#include "chapters/conclude.typ"
 #include "chapters/appendix.typ"
+#include "chapters/references.typ"
