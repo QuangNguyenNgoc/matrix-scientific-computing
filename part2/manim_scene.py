@@ -1,882 +1,1008 @@
 from manim import *
+import unicodedata
 import numpy as np
 
 from decomposition import svdDecomp
 from diagonalization import diagonalize, matrixMultiply, matrixTranspose
 
 
-SVD_MATRIX = [[2.0, 1.0], [0.5, 1.5]]
+FONT = "Times New Roman"
+VIET_TEX_TEMPLATE = TexTemplate(
+    tex_compiler="xelatex",
+    output_format=".xdv",
+    preamble=rf"""
+\usepackage{{fontspec}}
+\usepackage[vietnamese]{{babel}}
+\usepackage{{amsmath}}
+\usepackage{{amssymb}}
+\usepackage{{ragged2e}}
+\IfFontExistsTF{{{FONT}}}{{
+    \setmainfont{{{FONT}}}
+    \setsansfont{{{FONT}}}
+}}{{
+    \setmainfont{{TeX Gyre Termes}}
+    \setsansfont{{TeX Gyre Termes}}
+}}
+""",
+)
 DIAG_MATRIX = [[4.0, 1.0], [2.0, 3.0]]
-FONT = "DejaVu Sans Mono"
-BG = "#0f1217"
-CARD_BG = "#171b24"
-CARD_STROKE = "#3a4252"
-NORMAL_WEIGHT = "NORMAL"
-BOLD_WEIGHT = "BOLD"
+SVD_MATRIX = [[2.0, 1.0], [1.0, 2.0]]
+ANIMATION_SCALE = 1.45
+WAIT_SCALE = 2.35
 
 
-def fmt_num(value):
+def latex_text(text):
+    replacements = {
+        "\\": r"\textbackslash{}",
+        "&": r"\&",
+        "%": r"\%",
+        "$": r"\$",
+        "#": r"\#",
+        "_": r"\_",
+        "{": r"\{",
+        "}": r"\}",
+        "~": r"\textasciitilde{}",
+        "^": r"\textasciicircum{}",
+    }
+    text = unicodedata.normalize("NFC", text)
+    return "".join(replacements.get(char, char) for char in text)
+
+
+def tex_num(value):
     value = 0.0 if abs(float(value)) < 1e-9 else float(value)
-    if abs(value - round(value)) < 1e-9:
-        return f"{value:.0f}"
-    return f"{value:.2f}"
+    known = [
+        (1 / np.sqrt(2), r"\frac1{\sqrt2}"),
+        (-1 / np.sqrt(2), r"-\frac1{\sqrt2}"),
+        (3 / np.sqrt(2), r"\frac3{\sqrt2}"),
+        (-3 / np.sqrt(2), r"-\frac3{\sqrt2}"),
+        (1 / np.sqrt(5), r"\frac1{\sqrt5}"),
+        (-1 / np.sqrt(5), r"-\frac1{\sqrt5}"),
+        (2 / np.sqrt(5), r"\frac2{\sqrt5}"),
+        (-2 / np.sqrt(5), r"-\frac2{\sqrt5}"),
+        (np.sqrt(2) / 3, r"\frac{\sqrt2}{3}"),
+        (-np.sqrt(2) / 3, r"-\frac{\sqrt2}{3}"),
+        (2 * np.sqrt(2) / 3, r"\frac{2\sqrt2}{3}"),
+        (-2 * np.sqrt(2) / 3, r"-\frac{2\sqrt2}{3}"),
+        (np.sqrt(5) / 3, r"\frac{\sqrt5}{3}"),
+        (-np.sqrt(5) / 3, r"-\frac{\sqrt5}{3}"),
+    ]
+    for target, text in known:
+        if abs(value - target) < 1e-6:
+            return text
+    if abs(value - round(value)) < 1e-6:
+        return str(int(round(value)))
+    return f"{value:.2f}".rstrip("0").rstrip(".")
 
 
-def fmt_sci(value):
-    return f"{float(value):.2e}"
+def text_num(value):
+    value = 0.0 if abs(float(value)) < 1e-9 else float(value)
+    if abs(value - round(value)) < 1e-6:
+        return str(int(round(value)))
+    return f"{value:.2f}".rstrip("0").rstrip(".")
 
 
-def as_list(matrix):
-    if isinstance(matrix, np.ndarray):
-        return matrix.tolist()
-    return [list(row) for row in matrix]
+def tex_matrix(matrix):
+    rows = ["&".join(tex_num(value) for value in row) for row in matrix]
+    return r"\begin{pmatrix}" + r"\\".join(rows) + r"\end{pmatrix}"
 
 
-def np_matrix(matrix):
-    return np.array(matrix, dtype=float)
+def tex_column(vector):
+    return tex_matrix([[value] for value in vector])
 
 
-def fit_width(mobject, width):
-    if mobject.width > width:
-        mobject.scale_to_fit_width(width)
-    return mobject
+def get_col(matrix, index):
+    return [row[index] for row in matrix]
 
 
-def text_block(text, font_size=26, color=WHITE, weight=NORMAL_WEIGHT):
-    return Text(
-        text,
-        font=FONT,
-        font_size=font_size,
-        line_spacing=0.78,
-        color=color,
-        weight=weight,
-    )
+def sub_lambda(matrix, value):
+    return [
+        [matrix[row][col] - (value if row == col else 0.0) for col in range(len(matrix))]
+        for row in range(len(matrix))
+    ]
 
 
-def formula_card(title, formula, accent=BLUE_B, detail=None, width=None):
-    title_mob = text_block(title, font_size=20, color=accent, weight=BOLD_WEIGHT)
-    formula_mob = text_block(formula, font_size=25, color=WHITE)
-    content = VGroup(title_mob, formula_mob).arrange(DOWN, aligned_edge=LEFT, buff=0.12)
-    if detail:
-        detail_mob = text_block(detail, font_size=18, color=GRAY_A)
-        content.add(detail_mob)
-        content.arrange(DOWN, aligned_edge=LEFT, buff=0.12)
-    if width:
-        fit_width(content, width - 0.45)
-    bg = SurroundingRectangle(content, buff=0.18, corner_radius=0.06)
-    bg.set_fill(CARD_BG, opacity=0.92)
-    bg.set_stroke(accent, width=1.5, opacity=0.85)
-    return VGroup(bg, content)
+def scaled_vec(vector, scale=2.0):
+    return (np.array(vector, dtype=float) * scale).tolist()
 
 
-def matrix_card(name, matrix, accent=WHITE, font_size=18, title_size=20, cell_w=0.72, cell_h=0.38):
-    rows = as_list(matrix)
-    title = text_block(name, font_size=title_size, color=accent, weight=BOLD_WEIGHT)
+class Part2StoryboardMathTex(MovingCameraScene):
+    def play(self, *animations, **kwargs):
+        kwargs["run_time"] = kwargs.get("run_time", 1.0) * ANIMATION_SCALE
+        return super().play(*animations, **kwargs)
 
-    row_groups = []
-    for row in rows:
-        cells = []
-        for value in row:
-            box = Rectangle(width=cell_w, height=cell_h)
-            box.set_fill(BG, opacity=0.16)
-            box.set_stroke(CARD_STROKE, width=0.75, opacity=0.55)
-            number = text_block(f"{fmt_num(value):>5}", font_size=font_size, color=WHITE)
-            number.move_to(box)
-            cells.append(VGroup(box, number))
-        row_groups.append(VGroup(*cells).arrange(RIGHT, buff=0.03))
+    def wait(self, duration=1, *args, **kwargs):
+        return super().wait(duration * WAIT_SCALE, *args, **kwargs)
 
-    table = VGroup(*row_groups).arrange(DOWN, buff=0.04)
-    top = table.get_top()[1] + 0.09
-    bottom = table.get_bottom()[1] - 0.09
-    left = table.get_left()[0] - 0.13
-    right = table.get_right()[0] + 0.13
-    tick = 0.13
-    left_bracket = VGroup(
-        Line([left, top, 0], [left, bottom, 0]),
-        Line([left, top, 0], [left + tick, top, 0]),
-        Line([left, bottom, 0], [left + tick, bottom, 0]),
-    ).set_color(accent)
-    right_bracket = VGroup(
-        Line([right, top, 0], [right, bottom, 0]),
-        Line([right - tick, top, 0], [right, top, 0]),
-        Line([right - tick, bottom, 0], [right, bottom, 0]),
-    ).set_color(accent)
-    bracketed = VGroup(left_bracket, table, right_bracket)
-
-    content = VGroup(title, bracketed).arrange(DOWN, buff=0.12)
-    bg = SurroundingRectangle(content, buff=0.16, corner_radius=0.06)
-    bg.set_fill(CARD_BG, opacity=0.9)
-    bg.set_stroke(accent, width=1.25, opacity=0.75)
-    card = VGroup(bg, content)
-    return card
-
-
-def bullet_panel(title, bullets, accent=BLUE_B, font_size=20, width=6.0):
-    title_mob = text_block(title, font_size=23, color=accent, weight=BOLD_WEIGHT)
-    lines = []
-    for bullet in bullets:
-        dot = Dot(radius=0.045, color=accent)
-        line = text_block(bullet, font_size=font_size, color=GRAY_A)
-        fit_width(line, width - 0.55)
-        rows = VGroup(dot, line).arrange(RIGHT, buff=0.14, aligned_edge=UP)
-        lines.append(rows)
-    body = VGroup(*lines).arrange(DOWN, aligned_edge=LEFT, buff=0.16)
-    content = VGroup(title_mob, body).arrange(DOWN, aligned_edge=LEFT, buff=0.2)
-    fit_width(content, width)
-    bg = SurroundingRectangle(content, buff=0.2, corner_radius=0.06)
-    bg.set_fill(CARD_BG, opacity=0.9)
-    bg.set_stroke(accent, width=1.25, opacity=0.7)
-    return VGroup(bg, content)
-
-
-def chapter_header(index, title, subtitle, accent=BLUE_B):
-    index_mob = text_block(f"{index:02d}", font_size=26, color=BG, weight=BOLD_WEIGHT)
-    badge = RoundedRectangle(width=0.72, height=0.46, corner_radius=0.05)
-    badge.set_fill(accent, opacity=1.0)
-    badge.set_stroke(accent, width=0)
-    index_group = VGroup(badge, index_mob)
-    index_mob.move_to(badge)
-
-    title_mob = text_block(title, font_size=31, color=WHITE, weight=BOLD_WEIGHT)
-    subtitle_mob = text_block(subtitle, font_size=18, color=GRAY_A)
-    title_group = VGroup(title_mob, subtitle_mob).arrange(DOWN, aligned_edge=LEFT, buff=0.06)
-    header = VGroup(index_group, title_group).arrange(RIGHT, buff=0.24, aligned_edge=UP)
-    header.to_edge(UP).to_edge(LEFT)
-    return header
-
-
-def make_plane():
-    return NumberPlane(
-        x_range=[-4, 4, 1],
-        y_range=[-3, 3, 1],
-        x_length=7.0,
-        y_length=5.35,
-        background_line_style={
-            "stroke_color": GRAY_C,
-            "stroke_width": 1.0,
-            "stroke_opacity": 0.32,
-        },
-        axis_config={"stroke_color": GRAY_A, "stroke_width": 2},
-    ).to_edge(LEFT).shift(DOWN * 0.25)
-
-
-def transform_points(points, matrix):
-    arr = np.array(points, dtype=float)
-    mat = np.array(matrix, dtype=float)
-    return arr @ mat.T
-
-
-def transform_vector(vector, matrix):
-    vec = np.array(vector, dtype=float)
-    mat = np.array(matrix, dtype=float)
-    return mat @ vec
-
-
-def unit_circle_points(count=260):
-    angles = np.linspace(0.0, 2.0 * np.pi, count, endpoint=False)
-    return np.column_stack((np.cos(angles), np.sin(angles)))
-
-
-def curve_from_points(plane, points, color=BLUE_B, stroke_width=5, stroke_opacity=1.0):
-    coords = [plane.c2p(float(x), float(y)) for x, y in points]
-    curve = VMobject(color=color, stroke_width=stroke_width, stroke_opacity=stroke_opacity)
-    curve.set_points_smoothly(coords + [coords[0]])
-    return curve
-
-
-def arrow_from_vector(plane, vector, color, width=7):
-    end = plane.c2p(float(vector[0]), float(vector[1]))
-    return Arrow(
-        start=plane.c2p(0.0, 0.0),
-        end=end,
-        buff=0.0,
-        stroke_width=width,
-        max_tip_length_to_length_ratio=0.14,
-        color=color,
-    )
-
-
-def vector_pair_visual(plane, vec1, vec2, label1, label2, color1=BLUE_B, color2=GREEN_B):
-    arrow1 = arrow_from_vector(plane, vec1, color1)
-    arrow2 = arrow_from_vector(plane, vec2, color2)
-    text1 = text_block(label1, font_size=18, color=color1).next_to(arrow1.get_end(), UR, buff=0.08)
-    text2 = text_block(label2, font_size=18, color=color2).next_to(arrow2.get_end(), DR, buff=0.08)
-    return VGroup(arrow1, arrow2, text1, text2)
-
-
-def multiply_chain(*matrices):
-    result = as_list(matrices[0])
-    for matrix in matrices[1:]:
-        result = matrixMultiply(result, as_list(matrix))
-    return result
-
-
-def max_abs_error(mat_a, mat_b):
-    arr_a = np.array(mat_a, dtype=float)
-    arr_b = np.array(mat_b, dtype=float)
-    return float(np.max(np.abs(arr_a - arr_b)))
-
-
-def approximate_runtime_seconds():
-    return 518
-
-
-class Part2ManimDemo(Scene):
     def construct(self):
-        self.camera.background_color = BG
-        self.show_title_and_scope()
-        self.show_problem_setup()
-        svd_data = self.get_svd_data()
-        self.show_svd_relation_to_ata(svd_data)
-        self.show_svd_geometry(svd_data)
-        self.show_svd_numeric_breakdown(svd_data)
-        diag_data = self.get_diag_data()
-        self.show_diagonalization_theory(diag_data)
-        self.show_diagonalization_geometry(diag_data)
-        self.show_coordinate_change_example(diag_data)
-        self.show_diagonalization_verification(diag_data)
-        self.show_closing()
+        self.camera.background_color = "#101318"
+        self.diag_matrix = DIAG_MATRIX
+        self.diag_p, self.diag_d, self.diag_p_inv = diagonalize(self.diag_matrix)
+        self.diag_eigs = [self.diag_d[i][i] for i in range(len(self.diag_d))]
 
-    def get_svd_data(self):
-        mat_u, mat_sigma, mat_vt = svdDecomp(SVD_MATRIX)
-        mat_v = matrixTranspose(mat_vt)
-        mat_at = matrixTranspose(SVD_MATRIX)
-        mat_ata = matrixMultiply(mat_at, SVD_MATRIX)
-        return {
-            "a": SVD_MATRIX,
-            "at": mat_at,
-            "ata": mat_ata,
-            "u": mat_u,
-            "sigma": mat_sigma,
-            "v": mat_v,
-            "vt": mat_vt,
-            "sigmas": [mat_sigma[i][i] for i in range(2)],
-        }
+        self.svd_matrix = SVD_MATRIX
+        self.svd_u, self.svd_sigma, self.svd_vt = svdDecomp(self.svd_matrix)
+        self.svd_v = matrixTranspose(self.svd_vt)
+        self.svd_ata = matrixMultiply(matrixTranspose(self.svd_matrix), self.svd_matrix)
+        self.svd_lambdas = [self.svd_sigma[i][i] ** 2 for i in range(len(self.svd_sigma))]
 
-    def get_diag_data(self):
-        mat_p, mat_d, mat_p_inv = diagonalize(DIAG_MATRIX)
-        return {
-            "a": DIAG_MATRIX,
-            "p": mat_p,
-            "d": mat_d,
-            "p_inv": mat_p_inv,
-            "lambdas": [mat_d[i][i] for i in range(2)],
-        }
+        self.scene_01_opening()
+        self.scene_02_scope()
+        self.scene_03_diag_example()
+        self.scene_04_diag_eigenvalues()
+        self.scene_05_diag_vector_lambda_5()
+        self.scene_06_diag_vector_lambda_2()
+        self.scene_07_diag_factors()
+        self.scene_08_diag_result()
+        self.scene_08_diag_geometry()
+        self.scene_09_to_svd()
+        self.scene_10_svd_example()
+        self.scene_11_svd_ata()
+        self.scene_12_svd_eigenvalues()
+        self.scene_13_svd_vectors()
+        self.scene_14_svd_sigma_u()
+        self.scene_15_svd_final()
+        self.scene_16_svd_geometry()
 
-    def show_title_and_scope(self):
-        title = text_block("PART 2: MATRIX DECOMPOSITION", font_size=43, color=WHITE, weight=BOLD_WEIGHT)
-        subtitle = formula_card(
-            "Video target",
-            "SVD geometry  +  Diagonalization A = P D P^-1",
-            accent=BLUE_B,
-            detail="A Manim demonstration built from the local Python implementation.",
-            width=10.5,
+    def VText(self, text, size=28, color=WHITE, weight=NORMAL):
+        prefix = r"\rmfamily\bfseries " if weight == BOLD else r"\rmfamily "
+        return Tex(
+            prefix + latex_text(text),
+            tex_template=VIET_TEX_TEMPLATE,
+            font_size=size,
+            color=color,
         )
-        checklist = bullet_panel(
-            "Rubric coverage",
-            [
-                "Introduce a concrete matrix A and state the selected decomposition.",
-                "Visualize SVD as rotate -> scale -> rotate on the unit circle.",
-                "Display eigenvalues, eigenvectors, and the factorization A = P D P^-1.",
-                "Verify the decompositions numerically with reconstruction errors.",
-            ],
-            accent=GREEN_B,
-            font_size=20,
-            width=8.8,
+
+    def VParagraph(self, text, size=25, color=WHITE, width_cm=6.4):
+        body = latex_text(" ".join(text.split()))
+        return Tex(
+            rf"\begin{{minipage}}{{{width_cm}cm}}\justifying\setlength{{\parindent}}{{0pt}}\emergencystretch=2em\rmfamily {body}\end{{minipage}}",
+            tex_template=VIET_TEX_TEMPLATE,
+            font_size=size,
+            color=color,
         )
-        runtime = formula_card(
-            "Planned length",
-            "About 8 minutes 40 seconds",
-            accent=YELLOW_B,
-            detail="Longer than the 2 minute minimum and far below the 30 minute limit.",
-            width=7.8,
+
+    def Title(self, text, color=BLUE):
+        return self.VText(text, 38, color, BOLD).to_edge(UP)
+
+    def Explain(self, text, color=GRAY_A):
+        return self.VText(text, 24, color).to_edge(DOWN)
+
+    def fit(self, mob, max_width=6.0, max_height=None):
+        if mob.width > max_width:
+            mob.scale_to_fit_width(max_width)
+        if max_height is not None and mob.height > max_height:
+            mob.scale_to_fit_height(max_height)
+        return mob
+
+    def left_col(self, mob, y=0.15, max_width=5.9):
+        self.fit(mob, max_width)
+        return mob.move_to(LEFT * 3.35 + UP * y)
+
+    def right_col(self, mob, y=0.15, max_width=5.9):
+        self.fit(mob, max_width)
+        return mob.move_to(RIGHT * 3.35 + UP * y)
+
+    def center_content(self, mob, y=0.25, max_width=11.4, max_height=None):
+        self.fit(mob, max_width, max_height)
+        return mob.move_to(UP * y)
+
+    def underline(self, mob, color=YELLOW):
+        line = Line(mob.get_left(), mob.get_right(), color=color, stroke_width=3)
+        line.next_to(mob, DOWN, buff=0.08)
+        return line
+
+    def wipe(self):
+        if self.mobjects:
+            self.play(*[FadeOut(mob) for mob in self.mobjects], run_time=0.8)
+
+    def write_sequence(self, items, wait=0.35, run_time=0.8):
+        for item in items:
+            self.play(Write(item), run_time=run_time)
+            self.wait(wait)
+
+    def equation_flow(self, title, equations, result_tex, explain, result_color=YELLOW, highlights=None):
+        current = self.center_content(MathTex(equations[0]).scale(0.84), y=0.85, max_width=10.6)
+        faded = None
+        arrow = None
+
+        self.play(FadeIn(title), Write(current), run_time=1.0)
+        for tex in equations[1:]:
+            next_line = self.center_content(MathTex(tex).scale(0.84), y=0.0, max_width=10.6)
+            next_arrow = MathTex(r"\Downarrow", color=GRAY_A).scale(0.5).move_to(UP * 0.45)
+            animations = [
+                current.animate.scale(0.82).move_to(UP * 1.38).set_color(GRAY_B),
+                FadeIn(next_arrow, shift=DOWN * 0.08),
+                FadeIn(next_line, shift=DOWN * 0.14),
+            ]
+            if faded is not None:
+                animations.append(FadeOut(faded, shift=UP * 0.12))
+            if arrow is not None:
+                animations.append(FadeOut(arrow, shift=UP * 0.12))
+
+            self.play(*animations, run_time=1.05)
+            self.play(Indicate(next_line, color=result_color), run_time=0.35)
+            self.wait(0.35)
+            faded = current
+            arrow = next_arrow
+            current = next_line
+
+        result = MathTex(result_tex, color=result_color).scale(0.9)
+        result.next_to(current, DOWN, buff=0.62)
+        self.fit(result, max_width=10.2)
+        underline = self.underline(result, result_color)
+        fade_old = []
+        if faded is not None:
+            fade_old.append(FadeOut(faded, shift=UP * 0.1))
+        if arrow is not None:
+            fade_old.append(FadeOut(arrow, shift=UP * 0.1))
+
+        self.play(*fade_old, Write(result), Create(underline), FadeIn(explain), run_time=1.0)
+        for term in highlights or []:
+            self.play(Indicate(result.get_part_by_tex(term), color=result_color), run_time=0.8)
+        return VGroup(current, result, underline, explain)
+
+    def axes_small(self):
+        return NumberPlane(
+            x_range=[-3, 3, 1],
+            y_range=[-3, 3, 1],
+            x_length=4.2,
+            y_length=4.2,
+            background_line_style={"stroke_opacity": 0.28, "stroke_width": 1},
+            axis_config={"stroke_color": GRAY_B, "stroke_width": 2},
         )
-        group = VGroup(title, subtitle, checklist, runtime).arrange(DOWN, buff=0.35)
 
-        self.play(FadeIn(title, shift=UP * 0.2), run_time=3.0)
-        self.play(FadeIn(subtitle), run_time=3.5)
-        self.play(FadeIn(checklist, shift=UP * 0.1), run_time=4.0)
-        self.play(FadeIn(runtime), run_time=2.5)
-        self.wait(12)
-        self.play(FadeOut(group), run_time=3.0)
-
-    def show_problem_setup(self):
-        header = chapter_header(
-            1,
-            "Problem Setup",
-            "Choose SVD as the decomposition method, then also show diagonalization.",
-            accent=BLUE_B,
+    def arrow_vec(self, axes, vector, color, label=None):
+        arrow = Arrow(
+            axes.c2p(0, 0),
+            axes.c2p(float(vector[0]), float(vector[1])),
+            buff=0,
+            color=color,
+            stroke_width=6,
         )
-        svd_card = matrix_card("A_svd", SVD_MATRIX, accent=BLUE_B, font_size=20)
-        svd_goal = formula_card(
-            "SVD goal",
-            "A_svd = U Sigma V^T",
-            accent=BLUE_B,
-            detail="U and V are orthogonal; Sigma stores the singular values.",
-            width=5.3,
-        )
-        diag_card = matrix_card("A_diag", DIAG_MATRIX, accent=GREEN_B, font_size=20)
-        diag_goal = formula_card(
-            "Diagonalization goal",
-            "A_diag = P D P^-1",
-            accent=GREEN_B,
-            detail="Columns of P are eigenvectors; D stores eigenvalues.",
-            width=5.3,
-        )
-        left = VGroup(svd_card, svd_goal).arrange(DOWN, buff=0.28)
-        right = VGroup(diag_card, diag_goal).arrange(DOWN, buff=0.28)
-        panels = VGroup(left, right).arrange(RIGHT, buff=1.0).shift(DOWN * 0.25)
-        source = formula_card(
-            "Implementation boundary",
-            "svdDecomp(A) from decomposition.py   |   diagonalize(A) from diagonalization.py",
-            accent=GRAY_B,
-            detail="This Manim file only visualizes and formats the computed results.",
-            width=11.6,
-        ).to_edge(DOWN)
+        if label is None:
+            return arrow
+        text = MathTex(label, color=color).scale(0.72).next_to(arrow.get_end(), UR, buff=0.08)
+        return VGroup(arrow, text)
 
-        self.play(FadeIn(header), run_time=2.5)
-        self.play(FadeIn(panels), run_time=4.0)
-        self.play(FadeIn(source), run_time=3.0)
-        self.wait(16)
-        self.play(FadeOut(VGroup(header, panels, source)), run_time=3.0)
+    def scene_01_opening(self):
+        title = self.VText("Phân rã ma trận và chéo hóa", 44, WHITE, BOLD)
+        group = self.VText("Nhóm 12 - 24CTT3 - HCMUS", 28, BLUE).next_to(title, DOWN, buff=0.45)
+        course = self.VText("Môn Toán Ứng Dụng và Thống Kê", 24, GRAY_A).next_to(group, DOWN, buff=0.25)
+        tagline = self.VText("Từ trị riêng, vector riêng đến SVD và ý nghĩa hình học", 23, YELLOW).to_edge(DOWN)
 
-    def show_svd_relation_to_ata(self, svd_data):
-        header = chapter_header(
-            2,
-            "How SVD Is Built",
-            "The implementation uses A^T A to obtain right singular vectors and singular values.",
-            accent=TEAL_B,
-        )
-        sigma_1, sigma_2 = svd_data["sigmas"]
-        lambda_diag = [[sigma_1**2, 0.0], [0.0, sigma_2**2]]
+        self.play(Write(title), run_time=1.8)
+        self.play(FadeIn(group, shift=UP * 0.25), run_time=1.0)
+        self.play(FadeIn(course, shift=UP * 0.15), run_time=1.0)
+        self.play(FadeIn(tagline), run_time=0.8)
+        self.wait(2)
+        self.play(title.animate.scale(0.58).to_edge(UP), FadeOut(group), FadeOut(course), FadeOut(tagline), run_time=1.0)
+        self.play(FadeOut(title), run_time=0.4)
 
-        cards = VGroup(
-            matrix_card("A", svd_data["a"], accent=WHITE, font_size=18),
-            matrix_card("A^T A", svd_data["ata"], accent=TEAL_B, font_size=18),
-            matrix_card("V", svd_data["v"], accent=BLUE_B, font_size=18),
-            matrix_card("Lambda", lambda_diag, accent=YELLOW_B, font_size=18),
-        ).arrange(RIGHT, buff=0.35).scale(0.87).shift(UP * 0.75)
-        arrows = VGroup()
-        for left, right in zip(cards[:-1], cards[1:]):
-            arrows.add(Arrow(left.get_right(), right.get_left(), buff=0.12, color=GRAY_B, stroke_width=4))
-
-        formula = formula_card(
-            "Key relation",
-            "A^T A = V Lambda V^T,     sigma_i = sqrt(lambda_i)",
-            accent=TEAL_B,
-            detail="SVD is closely linked to diagonalizing the symmetric matrix A^T A.",
-            width=10.5,
-        )
-        steps = bullet_panel(
-            "Algorithm shown by the scene",
-            [
-                "Form A^T A using the local matrixMultiply and matrixTranspose helpers.",
-                "Find eigenvectors of A^T A; these vectors become the columns of V.",
-                "Take square roots of eigenvalues to obtain singular values sigma_i.",
-                "Compute left singular vectors using u_i = A v_i / sigma_i.",
-            ],
-            accent=TEAL_B,
-            font_size=18,
-            width=9.4,
-        )
-        explanation = VGroup(formula, steps).arrange(DOWN, buff=0.18).to_edge(DOWN)
-
-        self.play(FadeIn(header), run_time=2.5)
-        self.play(FadeIn(cards), LaggedStart(*[GrowArrow(a) for a in arrows], lag_ratio=0.25), run_time=5.5)
-        self.play(FadeIn(formula), run_time=3.0)
-        self.play(FadeIn(steps), run_time=4.0)
-        self.wait(20)
-        self.play(FadeOut(VGroup(header, cards, arrows, explanation)), run_time=3.0)
-
-    def show_svd_geometry(self, svd_data):
-        mat_u = svd_data["u"]
-        mat_sigma = svd_data["sigma"]
-        mat_vt = svd_data["vt"]
-        arr_a = np_matrix(svd_data["a"])
-
-        header = chapter_header(
-            3,
-            "SVD Geometry",
-            "A circle becomes an ellipse through rotate -> scale -> rotate.",
-            accent=BLUE_B,
-        )
-        pipeline = formula_card(
-            "Transformation pipeline",
-            "x  ->  V^T x  ->  Sigma V^T x  ->  U Sigma V^T x = A x",
-            accent=BLUE_B,
-            detail="The same point is transformed step by step, so the geometry is visible.",
-            width=10.7,
-        ).next_to(header, DOWN, aligned_edge=LEFT, buff=0.25)
-        plane = make_plane()
-
-        matrix_panel = VGroup(
-            matrix_card("V^T", mat_vt, accent=TEAL_B, font_size=15, cell_w=0.66),
-            matrix_card("Sigma", mat_sigma, accent=YELLOW_B, font_size=15, cell_w=0.66),
-            matrix_card("U", mat_u, accent=RED_B, font_size=15, cell_w=0.66),
-            formula_card(
-                "Singular values",
-                f"sigma_1 = {fmt_num(svd_data['sigmas'][0])}\nsigma_2 = {fmt_num(svd_data['sigmas'][1])}",
-                accent=YELLOW_B,
-                detail="They are the stretch factors of the ellipse.",
-                width=3.45,
+    def scene_02_scope(self):
+        title = self.Title("Chéo hóa ma trận", BLUE)
+        formula = MathTex(r"A=PDP^{-1}", color=YELLOW).scale(1.0)
+        lines = VGroup(
+            self.VParagraph(
+                "Chéo hóa biểu diễn một ma trận vuông A bằng công thức bên trên; trong đó D là ma trận "
+                "đường chéo chứa các trị riêng. Các cột của P là những vector riêng tương ứng.",
+                25,
+                WHITE,
             ),
-        ).arrange(DOWN, buff=0.12).to_edge(RIGHT).shift(DOWN * 0.05)
-        matrix_panel.scale_to_fit_height(6.35)
-
-        points_0 = unit_circle_points()
-        points_1 = transform_points(points_0, mat_vt)
-        points_2 = transform_points(points_1, mat_sigma)
-        points_3 = transform_points(points_2, mat_u)
-        points_direct = transform_points(points_0, arr_a)
-
-        shape = curve_from_points(plane, points_0, color=BLUE_B, stroke_width=5)
-        shape_vt = curve_from_points(plane, points_1, color=TEAL_B, stroke_width=5)
-        shape_sigma = curve_from_points(plane, points_2, color=YELLOW_B, stroke_width=5)
-        shape_u = curve_from_points(plane, points_3, color=RED_B, stroke_width=5)
-        shape_direct = curve_from_points(plane, points_direct, color=PURPLE_B, stroke_width=4, stroke_opacity=0.85)
-
-        e1 = np.array([1.0, 0.0], dtype=float)
-        e2 = np.array([0.0, 1.0], dtype=float)
-        vt_e1 = transform_vector(e1, mat_vt)
-        vt_e2 = transform_vector(e2, mat_vt)
-        sg_e1 = transform_vector(vt_e1, mat_sigma)
-        sg_e2 = transform_vector(vt_e2, mat_sigma)
-        u_e1 = transform_vector(sg_e1, mat_u)
-        u_e2 = transform_vector(sg_e2, mat_u)
-
-        basis = vector_pair_visual(plane, e1, e2, "e1", "e2", BLUE_B, GREEN_B)
-        basis_vt = vector_pair_visual(plane, vt_e1, vt_e2, "V^T e1", "V^T e2", BLUE_B, GREEN_B)
-        basis_sigma = vector_pair_visual(plane, sg_e1, sg_e2, "Sigma V^T e1", "Sigma V^T e2", BLUE_B, GREEN_B)
-        basis_u = vector_pair_visual(plane, u_e1, u_e2, "A e1", "A e2", BLUE_B, GREEN_B)
-
-        note = formula_card(
-            "Start",
-            "Unit circle: ||x|| = 1",
-            accent=BLUE_B,
-            detail="Every point on the circle is a possible input direction.",
-            width=7.4,
-        ).to_edge(DOWN)
-        focus = SurroundingRectangle(matrix_panel[0], color=TEAL_B, buff=0.07, stroke_width=3)
-
-        self.play(FadeIn(header), FadeIn(pipeline), Create(plane), FadeIn(matrix_panel), run_time=6.0)
-        self.play(Create(shape), FadeIn(basis), FadeIn(note), run_time=6.0)
-        self.wait(12)
-
-        note_vt = formula_card(
-            "Step 1: right rotation",
-            "V^T rotates the input directions.",
-            accent=TEAL_B,
-            detail="The circle remains a circle because rotations preserve length.",
-            width=7.4,
-        ).move_to(note)
-        self.play(Create(focus), run_time=1.5)
-        self.play(
-            Transform(shape, shape_vt),
-            ReplacementTransform(basis, basis_vt),
-            ReplacementTransform(note, note_vt),
-            run_time=8.0,
-        )
-        basis = basis_vt
-        note = note_vt
-        self.wait(14)
-
-        note_sigma = formula_card(
-            "Step 2: axis scaling",
-            "Sigma stretches by sigma_1 and sigma_2.",
-            accent=YELLOW_B,
-            detail="The unit circle becomes an ellipse after unequal scaling.",
-            width=7.4,
-        ).move_to(note)
-        self.play(Transform(focus, SurroundingRectangle(matrix_panel[1], color=YELLOW_B, buff=0.07, stroke_width=3)), run_time=2.0)
-        self.play(
-            Transform(shape, shape_sigma),
-            ReplacementTransform(basis, basis_sigma),
-            ReplacementTransform(note, note_sigma),
-            run_time=8.0,
-        )
-        basis = basis_sigma
-        note = note_sigma
-        self.wait(14)
-
-        note_u = formula_card(
-            "Step 3: left rotation",
-            "U rotates the scaled ellipse into the final position.",
-            accent=RED_B,
-            detail="The final shape is exactly the image of the unit circle under A.",
-            width=7.4,
-        ).move_to(note)
-        self.play(Transform(focus, SurroundingRectangle(matrix_panel[2], color=RED_B, buff=0.07, stroke_width=3)), run_time=2.0)
-        self.play(
-            Transform(shape, shape_u),
-            ReplacementTransform(basis, basis_u),
-            ReplacementTransform(note, note_u),
-            run_time=8.0,
-        )
-        basis = basis_u
-        note = note_u
-        self.wait(14)
-
-        compare = formula_card(
-            "Consistency check",
-            "Direct transform by A overlaps U Sigma V^T.",
-            accent=PURPLE_B,
-            detail="The purple curve is computed from A x directly.",
-            width=7.4,
-        ).move_to(note)
-        self.play(Create(shape_direct), ReplacementTransform(note, compare), run_time=5.0)
-        self.play(
-            Indicate(shape, color=RED_B, scale_factor=1.03),
-            Indicate(shape_direct, color=PURPLE_B, scale_factor=1.03),
-            run_time=4.0,
-        )
-        self.wait(16)
-        self.play(FadeOut(VGroup(header, pipeline, plane, matrix_panel, shape, shape_direct, basis, focus, compare)), run_time=3.0)
-
-    def show_svd_numeric_breakdown(self, svd_data):
-        mat_u = svd_data["u"]
-        mat_sigma = svd_data["sigma"]
-        mat_vt = svd_data["vt"]
-        arr_a = np_matrix(svd_data["a"])
-        arr_u = np_matrix(mat_u)
-        arr_vt = np_matrix(mat_vt)
-        arr_rebuild = np_matrix(multiply_chain(mat_u, mat_sigma, mat_vt))
-        err = max_abs_error(arr_a, arr_rebuild)
-
-        sigma_1, sigma_2 = svd_data["sigmas"]
-        term_1 = sigma_1 * np.outer(arr_u[:, 0], arr_vt[0, :])
-        term_2 = sigma_2 * np.outer(arr_u[:, 1], arr_vt[1, :])
-        term_sum = term_1 + term_2
-        rank1_error = max_abs_error(arr_a, term_1)
-
-        header = chapter_header(
-            4,
-            "SVD Numerical Check",
-            "After the geometry, verify the same decomposition with numbers.",
-            accent=YELLOW_B,
-        )
-        formula = formula_card(
-            "Outer product view",
-            "A = sigma_1 u_1 v_1^T + sigma_2 u_2 v_2^T",
-            accent=YELLOW_B,
-            detail="Each term adds one directional component of the matrix.",
-            width=10.5,
-        ).next_to(header, DOWN, aligned_edge=LEFT, buff=0.25)
-
-        cards_top = VGroup(
-            matrix_card("A", arr_a, accent=WHITE, font_size=17),
-            matrix_card("U Sigma V^T", arr_rebuild, accent=GREEN_B, font_size=17),
-            formula_card("Rebuild error", f"max error = {fmt_sci(err)}", accent=GREEN_B, width=3.3),
-        ).arrange(RIGHT, buff=0.36).shift(UP * 0.55)
-        cards_top.scale_to_fit_width(11.5)
-
-        cards_bottom = VGroup(
-            matrix_card("Term 1", term_1, accent=BLUE_B, font_size=16),
-            matrix_card("Term 2", term_2, accent=TEAL_B, font_size=16),
-            matrix_card("Term 1 + Term 2", term_sum, accent=GREEN_B, font_size=16),
-            formula_card("Rank-1 loss", f"rank-1 error = {fmt_sci(rank1_error)}", accent=YELLOW_B, width=3.25),
-        ).arrange(RIGHT, buff=0.25).shift(DOWN * 1.45)
-        cards_bottom.scale_to_fit_width(12.0)
-
-        note = bullet_panel(
-            "Interpretation",
-            [
-                "The full two-term sum reconstructs A with only floating-point error.",
-                "Keeping only term 1 gives the best one-direction approximation.",
-                "This is why SVD is useful for compression and low-rank approximation.",
-            ],
-            accent=YELLOW_B,
-            font_size=18,
-            width=8.8,
-        ).to_edge(DOWN)
-
-        self.play(FadeIn(header), FadeIn(formula), run_time=4.5)
-        self.play(FadeIn(cards_top), run_time=5.0)
-        self.wait(12)
-        self.play(FadeIn(cards_bottom), run_time=6.0)
-        self.play(FadeIn(note), run_time=4.0)
-        self.wait(20)
-        self.play(FadeOut(VGroup(header, formula, cards_top, cards_bottom, note)), run_time=3.0)
-
-    def show_diagonalization_theory(self, diag_data):
-        header = chapter_header(
-            5,
-            "Diagonalization Setup",
-            "A diagonalizable matrix has an eigenbasis.",
-            accent=GREEN_B,
-        )
-        mat_p = diag_data["p"]
-        mat_d = diag_data["d"]
-        mat_p_inv = diag_data["p_inv"]
-        lambdas = diag_data["lambdas"]
-        det_p = float(np.linalg.det(np_matrix(mat_p)))
-
-        top = VGroup(
-            matrix_card("A", diag_data["a"], accent=WHITE, font_size=18),
-            matrix_card("P", mat_p, accent=BLUE_B, font_size=18),
-            matrix_card("D", mat_d, accent=GREEN_B, font_size=18),
-            matrix_card("P^-1", mat_p_inv, accent=GRAY_B, font_size=18),
-        ).arrange(RIGHT, buff=0.28).shift(UP * 0.65)
-        top.scale_to_fit_width(11.7)
-
-        formula = formula_card(
-            "Main formula",
-            "A = P D P^-1",
-            accent=GREEN_B,
-            detail=f"lambda_1 = {fmt_num(lambdas[0])}, lambda_2 = {fmt_num(lambdas[1])}, det(P) = {fmt_num(det_p)}",
-            width=6.6,
-        )
-        bullets = bullet_panel(
-            "Meaning of the factors",
-            [
-                "P changes coordinates from eigenbasis coordinates back to standard coordinates.",
-                "D scales each eigenbasis coordinate independently by lambda_i.",
-                "P^-1 converts a vector from standard coordinates into the eigenbasis.",
-            ],
-            accent=GREEN_B,
-            font_size=18,
-            width=6.8,
-        )
-        middle = VGroup(formula, bullets).arrange(RIGHT, buff=0.55).shift(DOWN * 1.15)
-
-        self.play(FadeIn(header), run_time=2.5)
-        self.play(FadeIn(top), run_time=5.5)
-        self.play(FadeIn(formula), run_time=3.0)
-        self.play(FadeIn(bullets), run_time=4.0)
-        self.wait(22)
-        self.play(FadeOut(VGroup(header, top, middle)), run_time=3.0)
-
-    def show_diagonalization_geometry(self, diag_data):
-        arr_a = np_matrix(diag_data["a"])
-        arr_p = np_matrix(diag_data["p"])
-        lambdas = diag_data["lambdas"]
-
-        header = chapter_header(
-            6,
-            "Eigenvector Geometry",
-            "Eigenvectors keep their direction; eigenvalues only scale them.",
-            accent=GREEN_B,
-        )
-        relation_card = formula_card(
-            "Eigenvector rule",
-            "A v_i = lambda_i v_i",
-            accent=GREEN_B,
-            detail="This is the visual reason diagonalization works.",
-            width=6.7,
-        ).next_to(header, DOWN, aligned_edge=LEFT, buff=0.22)
-        plane = make_plane()
-        panel = VGroup(
-            matrix_card("P = [v1  v2]", diag_data["p"], accent=BLUE_B, font_size=16, cell_w=0.66),
-            matrix_card("D", diag_data["d"], accent=GREEN_B, font_size=16, cell_w=0.66),
-            formula_card(
-                "Eigenvalues",
-                f"lambda_1 = {fmt_num(lambdas[0])}\nlambda_2 = {fmt_num(lambdas[1])}",
-                accent=YELLOW_B,
-                detail="These are the scale factors along v1 and v2.",
-                width=3.5,
+            self.VParagraph(
+                "Khi chuyển sang eigenbasis, phép biến đổi chỉ còn co giãn theo từng trục riêng.",
+                25,
+                BLUE,
             ),
-        ).arrange(DOWN, buff=0.16).to_edge(RIGHT).shift(DOWN * 0.15)
-        panel.scale_to_fit_height(5.9)
+            self.VParagraph(
+                "Nhờ vậy ta tính lũy thừa ma trận và hiểu hình học của A dễ hơn.",
+                25,
+                GRAY_A,
+            ),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.26)
+        self.left_col(lines, y=-0.35, max_width=5.95)
 
-        v1 = arr_p[:, 0] / np.linalg.norm(arr_p[:, 0]) * 0.8
-        v2 = arr_p[:, 1] / np.linalg.norm(arr_p[:, 1]) * 0.8
-        av1 = arr_a @ v1
-        av2 = arr_a @ v2
+        axes = self.axes_small().scale(0.85).move_to(RIGHT * 3.35 + DOWN * 0.2)
+        v1 = self.arrow_vec(axes, [1.6, 1.1], BLUE, r"v_1")
+        v2 = self.arrow_vec(axes, [-0.8, 1.45], TEAL, r"v_2")
+        lambda_v1 = self.arrow_vec(axes, [2.45, 1.68], YELLOW, r"\lambda_1v_1")
+        lambda_v2 = self.arrow_vec(axes, [-1.15, 2.08], ORANGE, r"\lambda_2v_2")
+        eigen_note = VGroup(
+            MathTex(r"Av_i=\lambda_i v_i", color=YELLOW).scale(0.5),
+            self.VText("A chỉ kéo giãn trên hướng riêng", 22, GRAY_A),
+        ).arrange(DOWN, buff=0.16).next_to(axes, DOWN, buff=0.18)
+        visual = VGroup(axes, v1, v2, lambda_v1, lambda_v2, eigen_note)
 
-        line1 = DashedLine(
-            plane.c2p(float(-3.3 * v1[0]), float(-3.3 * v1[1])),
-            plane.c2p(float(3.3 * v1[0]), float(3.3 * v1[1])),
-            color=BLUE_D,
-            stroke_opacity=0.58,
+        self.play(FadeIn(title), run_time=0.8)
+        self.play(Write(formula), run_time=0.8)
+        self.play(formula.animate.scale(0.78).move_to(LEFT * 3.35 + UP * 1.75), run_time=0.8, rate_func=smooth)
+        self.play(LaggedStart(*[FadeIn(line, shift=UP * 0.06) for line in lines], lag_ratio=0.13), run_time=1.55)
+        self.play(Create(axes), GrowArrow(v1[0]), FadeIn(v1[1]), GrowArrow(v2[0]), FadeIn(v2[1]), run_time=1.1)
+        self.play(
+            TransformFromCopy(v1[0], lambda_v1[0]),
+            FadeIn(lambda_v1[1]),
+            TransformFromCopy(v2[0], lambda_v2[0]),
+            FadeIn(lambda_v2[1]),
+            FadeIn(eigen_note, shift=UP * 0.1),
+            run_time=1.2,
         )
-        line2 = DashedLine(
-            plane.c2p(float(-3.3 * v2[0]), float(-3.3 * v2[1])),
-            plane.c2p(float(3.3 * v2[0]), float(3.3 * v2[1])),
-            color=TEAL_D,
-            stroke_opacity=0.58,
+        self.play(
+            Indicate(formula.get_part_by_tex("D"), color=YELLOW),
+            Indicate(visual, color=BLUE),
+            run_time=0.6,
         )
-        eigen_vectors = vector_pair_visual(plane, v1, v2, "v1", "v2", BLUE_B, TEAL_B)
-        transformed = vector_pair_visual(plane, av1, av2, "A v1", "A v2", RED_B, YELLOW_B)
+        self.wait(0.45)
+        self.wipe()
 
-        note_1 = formula_card(
-            "Step 1",
-            "Draw the eigenvector directions.",
-            accent=BLUE_B,
-            detail="These directions define the columns of P.",
-            width=7.2,
-        ).to_edge(DOWN)
-        note_2 = formula_card(
-            "Step 2",
-            "Apply A. The arrows get longer, but stay on the same lines.",
-            accent=GREEN_B,
-            detail=f"A v1 = {fmt_num(lambdas[0])} v1,    A v2 = {fmt_num(lambdas[1])} v2",
-            width=7.2,
-        ).move_to(note_1)
+    def scene_03_diag_example(self):
+        title = self.Title("Ví dụ chéo hóa", BLUE)
+        matrix = MathTex(r"A=" + tex_matrix(self.diag_matrix)).scale(1.05)
+        formula = MathTex(r"A=PDP^{-1}").scale(0.92).next_to(matrix, DOWN, buff=0.8)
+        formula.set_color_by_tex("P", BLUE)
+        formula.set_color_by_tex("D", YELLOW)
+        formula.set_color_by_tex("P^{-1}", GREEN)
+        self.center_content(VGroup(matrix, formula), y=0.05, max_width=7.2)
+        explain = VGroup(
+            self.VText("Mục tiêu: tìm", 24, GRAY_A),
+            MathTex(r"P,\ D,\ P^{-1}", color=YELLOW).scale(0.52),
+            self.VText("để đưa A về dạng đường chéo.", 24, GRAY_A),
+        ).arrange(RIGHT, buff=0.16).to_edge(DOWN)
 
-        self.play(FadeIn(header), FadeIn(relation_card), Create(plane), FadeIn(panel), run_time=6.0)
-        self.play(Create(line1), Create(line2), FadeIn(eigen_vectors), FadeIn(note_1), run_time=7.0)
-        self.wait(16)
-        self.play(FadeIn(transformed), ReplacementTransform(note_1, note_2), run_time=7.0)
-        self.play(Indicate(transformed, color=GREEN_B, scale_factor=1.02), run_time=4.0)
-        self.wait(18)
-        self.play(FadeOut(VGroup(header, relation_card, plane, panel, line1, line2, eigen_vectors, transformed, note_2)), run_time=3.0)
+        self.play(FadeIn(title), run_time=0.8)
+        self.play(FadeIn(matrix, shift=DOWN * 0.4), run_time=1.2)
+        self.play(Write(formula), FadeIn(explain), run_time=1.1)
+        self.wait(3)
+        self.wipe()
 
-    def show_coordinate_change_example(self, diag_data):
-        header = chapter_header(
-            7,
-            "Coordinate Change View",
-            "Diagonalization is easiest to understand as three simple coordinate operations.",
-            accent=TEAL_B,
+    def scene_04_diag_eigenvalues(self):
+        title = self.Title("Tìm trị riêng của A", BLUE)
+        explain = self.Explain("Hai trị riêng phân biệt là điều kiện đủ để chéo hóa được.")
+        a, b = self.diag_matrix[0]
+        c, d = self.diag_matrix[1]
+        trace = a + d
+        det = a * d - b * c
+        ev1, ev2 = self.diag_eigs
+        equations = [
+            r"\det(A-\lambda I)=0",
+            rf"\det\begin{{pmatrix}}{tex_num(a)}-\lambda&{tex_num(b)}\\{tex_num(c)}&{tex_num(d)}-\lambda\end{{pmatrix}}=0",
+            rf"({tex_num(a)}-\lambda)({tex_num(d)}-\lambda)-{tex_num(b * c)}=0",
+            rf"\lambda^2-{tex_num(trace)}\lambda+{tex_num(det)}=0",
+            rf"(\lambda-{tex_num(ev1)})(\lambda-{tex_num(ev2)})=0",
+        ]
+
+        self.equation_flow(
+            title,
+            equations,
+            rf"\lambda_1={tex_num(ev1)},\qquad \lambda_2={tex_num(ev2)}",
+            explain,
+            YELLOW,
+            highlights=[tex_num(ev1), tex_num(ev2)],
         )
-        mat_p = diag_data["p"]
-        mat_d = diag_data["d"]
-        mat_p_inv = diag_data["p_inv"]
-        sample_x = [[1.0], [1.0]]
-        eigen_coords = matrixMultiply(mat_p_inv, sample_x)
-        scaled_coords = matrixMultiply(mat_d, eigen_coords)
-        final_x = matrixMultiply(mat_p, scaled_coords)
-        direct_x = matrixMultiply(diag_data["a"], sample_x)
+        self.wait(2.5)
+        self.wipe()
 
-        chain_formula = formula_card(
-            "For one sample vector x",
-            "x  ->  P^-1 x  ->  D(P^-1 x)  ->  P D P^-1 x",
-            accent=TEAL_B,
-            detail="The last vector equals A x.",
-            width=10.8,
-        ).next_to(header, DOWN, aligned_edge=LEFT, buff=0.25)
+    def scene_05_diag_vector_lambda_5(self):
+        ev = self.diag_eigs[0]
+        vector = get_col(self.diag_p, 0)
+        title = self.Title(f"Vector riêng ứng với λ₁ = {text_num(ev)}", BLUE)
+        left_steps = VGroup(
+            MathTex(rf"(A-{tex_num(ev)}I)x=0"),
+            MathTex(tex_matrix(sub_lambda(self.diag_matrix, ev)) + r"\begin{pmatrix}x_1\\x_2\end{pmatrix}=\begin{pmatrix}0\\0\end{pmatrix}"),
+            MathTex(r"-x_1+x_2=0\Rightarrow x_1=x_2"),
+            MathTex(r"v_1=" + tex_column(vector), color=GREEN),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.45).scale(0.78)
+        self.left_col(left_steps, y=0.25, max_width=6.1)
+        axes = self.right_col(self.axes_small(), y=-0.05, max_width=4.6)
+        v1 = self.arrow_vec(axes, scaled_vec(vector, 2.1), GREEN, r"v_1")
 
-        cards = VGroup(
-            matrix_card("x", sample_x, accent=WHITE, font_size=17, cell_w=0.7),
-            matrix_card("P^-1 x", eigen_coords, accent=GRAY_B, font_size=17, cell_w=0.7),
-            matrix_card("D(P^-1 x)", scaled_coords, accent=GREEN_B, font_size=17, cell_w=0.7),
-            matrix_card("P D P^-1 x", final_x, accent=BLUE_B, font_size=17, cell_w=0.7),
-            matrix_card("A x", direct_x, accent=YELLOW_B, font_size=17, cell_w=0.7),
-        ).arrange(RIGHT, buff=0.25).shift(UP * 0.35)
-        cards.scale_to_fit_width(12.0)
-        arrows = VGroup()
-        for left, right in zip(cards[:-1], cards[1:]):
-            arrows.add(Arrow(left.get_right(), right.get_left(), buff=0.09, color=GRAY_B, stroke_width=4))
+        self.play(FadeIn(title), Create(axes), run_time=1.0)
+        self.write_sequence(left_steps[:3], wait=0.4)
+        self.play(Write(left_steps[3]), run_time=1.0)
+        self.play(GrowArrow(v1[0]), FadeIn(v1[1]), run_time=1.0)
+        self.play(Circumscribe(left_steps[3], color=GREEN), run_time=1.0)
+        self.wait(2.5)
+        self.wipe()
 
-        explanation = bullet_panel(
-            "Why this matters",
-            [
-                "P^-1 rewrites x using eigenvector coordinates.",
-                "D applies only independent scalar multiplications.",
-                "P converts the scaled coordinates back to the standard plane.",
-                "This explains A^k = P D^k P^-1 for repeated powers.",
+    def scene_06_diag_vector_lambda_2(self):
+        ev = self.diag_eigs[1]
+        vector = get_col(self.diag_p, 1)
+        title = self.Title(f"Vector riêng ứng với λ₂ = {text_num(ev)}", BLUE)
+        left_steps = VGroup(
+            MathTex(rf"(A-{tex_num(ev)}I)x=0"),
+            MathTex(tex_matrix(sub_lambda(self.diag_matrix, ev)) + r"\begin{pmatrix}x_1\\x_2\end{pmatrix}=\begin{pmatrix}0\\0\end{pmatrix}"),
+            MathTex(r"2x_1+x_2=0\Rightarrow x_2=-2x_1"),
+            MathTex(r"v_2=" + tex_column(vector), color=ORANGE),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.45).scale(0.78)
+        self.left_col(left_steps, y=0.25, max_width=6.1)
+        axes = self.right_col(self.axes_small(), y=-0.05, max_width=4.6)
+        v1 = self.arrow_vec(axes, scaled_vec(get_col(self.diag_p, 0), 2.1), GREEN, r"v_1").set_opacity(0.35)
+        v2 = self.arrow_vec(axes, scaled_vec(vector, 2.1), ORANGE, r"v_2")
+        note = VGroup(
+            MathTex(r"v_1,\ v_2", color=YELLOW).scale(0.52),
+            self.VText("độc lập tuyến tính", 26, YELLOW),
+        ).arrange(RIGHT, buff=0.14).to_edge(DOWN)
+
+        self.play(FadeIn(title), Create(axes), FadeIn(v1), run_time=1.0)
+        self.write_sequence(left_steps[:3], wait=0.4)
+        self.play(Write(left_steps[3]), GrowArrow(v2[0]), FadeIn(v2[1]), run_time=1.0)
+        self.play(FadeIn(note), Circumscribe(left_steps[3], color=ORANGE), run_time=1.0)
+        self.wait(2.5)
+        self.wipe()
+
+    def scene_07_diag_factors(self):
+        title = VGroup(
+            self.VText("Dựng", 38, BLUE, BOLD),
+            MathTex(r"P,\ D,\ P^{-1}", color=BLUE).scale(0.78),
+        ).arrange(RIGHT, buff=0.22).to_edge(UP)
+        axes = self.right_col(self.axes_small(), y=-0.05, max_width=4.6)
+        ev1, ev2 = self.diag_eigs
+        v1 = self.arrow_vec(axes, scaled_vec(get_col(self.diag_p, 0), 2.1), GREEN, r"v_1")
+        v2 = self.arrow_vec(axes, scaled_vec(get_col(self.diag_p, 1), 2.1), ORANGE, r"v_2")
+        p = MathTex(r"P=" + tex_matrix(self.diag_p), color=BLUE).scale(0.78)
+        d = MathTex(r"D=" + tex_matrix(self.diag_d), color=YELLOW).scale(0.78)
+        pinv = MathTex(r"P^{-1}=" + tex_matrix(self.diag_p_inv), color=GREEN).scale(0.72)
+        left = self.left_col(VGroup(p, d, pinv).arrange(DOWN, aligned_edge=LEFT, buff=0.45), y=0.1, max_width=6.0)
+        formula = MathTex(r"A=PDP^{-1}", color=WHITE).scale(0.9).to_edge(DOWN)
+
+        self.play(FadeIn(title), Create(axes), FadeIn(v1), FadeIn(v2), run_time=1.0)
+        self.play(TransformFromCopy(v1, p), TransformFromCopy(v2, p), run_time=1.2)
+        self.play(Write(d), run_time=0.9)
+        self.play(Indicate(d.get_part_by_tex(tex_num(ev1)), color=YELLOW), Indicate(d.get_part_by_tex(tex_num(ev2)), color=YELLOW), run_time=0.9)
+        self.play(Write(pinv), run_time=0.9)
+        self.play(TransformFromCopy(left, formula), run_time=1.2)
+        self.wait(3)
+        self.wipe()
+
+    def scene_08_diag_result(self):
+        title = VGroup(
+            self.VText("Kết quả chéo hóa của", 36, BLUE, BOLD),
+            MathTex(r"A", color=YELLOW).scale(0.78),
+        ).arrange(RIGHT, buff=0.2).to_edge(UP)
+        base = MathTex(r"A=", "P", "D", r"P^{-1}", color=WHITE).scale(1.0).move_to(UP * 1.35)
+        base[1].set_color(BLUE)
+        base[2].set_color(YELLOW)
+        base[3].set_color(GREEN)
+
+        p = MathTex(r"P=" + tex_matrix(self.diag_p), color=BLUE).scale(0.72)
+        d = MathTex(r"D=" + tex_matrix(self.diag_d), color=YELLOW).scale(0.72)
+        pinv = MathTex(r"P^{-1}=" + tex_matrix(self.diag_p_inv), color=GREEN).scale(0.66)
+        factors = VGroup(p, d, pinv).arrange(RIGHT, buff=0.45)
+        self.center_content(factors, y=0.25, max_width=11.4)
+
+        expanded = MathTex(
+            tex_matrix(self.diag_matrix)
+            + r"="
+            + tex_matrix(self.diag_p)
+            + tex_matrix(self.diag_d)
+            + tex_matrix(self.diag_p_inv),
+            color=WHITE,
+        ).scale(0.55)
+        self.center_content(expanded, y=-1.0, max_width=11.6)
+
+        rebuilt = matrixMultiply(matrixMultiply(self.diag_p, self.diag_d), self.diag_p_inv)
+        check = MathTex(
+            r"PDP^{-1}=" + tex_matrix(rebuilt) + r"=A",
+            color=YELLOW,
+        ).scale(0.68).to_edge(DOWN)
+
+        self.play(FadeIn(title), Write(base), run_time=1.0)
+        self.play(
+            LaggedStart(
+                TransformFromCopy(base.get_part_by_tex("P"), p),
+                TransformFromCopy(base.get_part_by_tex("D"), d),
+                TransformFromCopy(base.get_part_by_tex("P^{-1}"), pinv),
+                lag_ratio=0.18,
+            ),
+            run_time=1.5,
+        )
+        self.play(Indicate(p, color=BLUE), Indicate(d, color=YELLOW), Indicate(pinv, color=GREEN), run_time=1.0)
+        self.play(ReplacementTransform(VGroup(base, factors), expanded), run_time=1.4)
+        self.play(Circumscribe(expanded, color=YELLOW), run_time=1.0)
+        self.play(TransformFromCopy(expanded, check), run_time=1.1)
+        self.play(Indicate(check.get_part_by_tex("A"), color=YELLOW), run_time=0.8)
+        self.wait(2.5)
+        self.wipe()
+
+    def scene_08_diag_geometry(self):
+        title = self.Title("Ý nghĩa hình học của chéo hóa", BLUE)
+        axes = self.right_col(self.axes_small().scale(1.15), y=-0.05, max_width=4.9)
+        square = Polygon(axes.c2p(0, 0), axes.c2p(1, 0), axes.c2p(1, 1), axes.c2p(0, 1), color=GRAY_A)
+        x_demo = [0.45, 0.25]
+        bx_demo = [row[0] * x_demo[0] + row[1] * x_demo[1] for row in self.diag_matrix]
+        x_vec = self.arrow_vec(axes, x_demo, YELLOW, r"x")
+        v1 = self.arrow_vec(axes, scaled_vec(get_col(self.diag_p, 0), 1.9), GREEN, r"v_1")
+        v2 = self.arrow_vec(axes, scaled_vec(get_col(self.diag_p, 1), 1.9), ORANGE, r"v_2")
+        labels = VGroup(
+            MathTex(r"P^{-1}:\ \text{change basis}").scale(0.58),
+            MathTex(r"D:\ \text{scale}").scale(0.58),
+            MathTex(r"P:\ \text{return}").scale(0.58),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.22)
+        self.left_col(labels, y=0.75, max_width=5.8)
+        explain = self.Explain("Đổi cơ sở -> co giãn theo trị riêng -> quay về hệ chuẩn.")
+        bx = self.arrow_vec(axes, bx_demo, RED, r"Ax")
+
+        self.play(FadeIn(title), Create(axes), Create(square), FadeIn(v1), FadeIn(v2), GrowArrow(x_vec[0]), FadeIn(x_vec[1]), run_time=1.5)
+        self.play(Write(labels[0]), FadeIn(explain), run_time=0.8)
+        self.play(Indicate(x_vec, color=YELLOW), run_time=0.9)
+        self.play(Write(labels[1]), run_time=0.8)
+        self.play(v1.animate.set_opacity(1), v2.animate.set_opacity(1), square.animate.stretch(1.45, 0).stretch(0.9, 1), run_time=1.2)
+        self.play(Write(labels[2]), run_time=0.8)
+        self.play(TransformFromCopy(x_vec, bx), run_time=1.0)
+        self.wait(2.7)
+        self.wipe()
+
+    def scene_09_to_svd(self):
+        title = self.Title("Phân rã SVD", TEAL)
+        formula = MathTex(r"B=U\Sigma V^T", color=YELLOW).scale(0.92)
+        lines = VGroup(
+            self.VParagraph(
+                "Phân rã SVD biểu diễn ma trận B bằng công thức bên trên; trong đó U và V là các ma trận "
+                "trực giao, còn Σ là ma trận đường chéo chứa các singular values.",
+                24,
+                WHITE,
+            ),
+            self.VParagraph(
+                "Về mặt hình học, SVD mô tả phép biến đổi tuyến tính thành ba bước rất trực quan: "
+                "xoay hệ tọa độ, co giãn theo các trục chính, rồi xoay lần nữa.",
+                24,
+                TEAL,
+            ),
+            self.VParagraph(
+                "Đây là công cụ quan trọng vì ổn định số học, giúp phân tích cấu trúc ma trận, "
+                "nén dữ liệu, xấp xỉ hạng thấp và nhiều ứng dụng trong tính toán khoa học.",
+                24,
+                GRAY_A,
+            ),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.22)
+        self.left_col(lines, y=-0.35, max_width=6.0)
+
+        mini_axes = NumberPlane(
+            x_range=[-2.5, 2.5, 1],
+            y_range=[-2.0, 2.0, 1],
+            x_length=4.5,
+            y_length=3.6,
+            background_line_style={"stroke_opacity": 0.18, "stroke_width": 1},
+            axis_config={"stroke_color": GRAY_B, "stroke_width": 2},
+        ).move_to(RIGHT * 3.35 + DOWN * 0.15)
+        circle = Circle(radius=0.72, color=WHITE, stroke_width=4).move_to(mini_axes.c2p(0, 0))
+        rotated_circle = circle.copy().rotate(-PI / 4, about_point=mini_axes.c2p(0, 0)).set_color(BLUE)
+        ellipse = Ellipse(width=3.25, height=1.05, color=YELLOW, stroke_width=5).move_to(mini_axes.c2p(0, 0)).rotate(-PI / 4)
+        final_ellipse = ellipse.copy().rotate(PI / 4, about_point=mini_axes.c2p(0, 0)).set_color(RED)
+
+        self.play(FadeIn(title), run_time=0.8)
+        self.play(Write(formula), run_time=0.8)
+        self.play(formula.animate.scale(0.76).move_to(LEFT * 3.35 + UP * 1.75), run_time=0.8, rate_func=smooth)
+        self.play(LaggedStart(*[FadeIn(line, shift=UP * 0.05) for line in lines], lag_ratio=0.09), run_time=1.75)
+        self.play(Create(mini_axes), Create(circle), run_time=0.9)
+        self.play(Transform(circle, rotated_circle), run_time=0.9, rate_func=smooth)
+        self.play(Transform(circle, ellipse), run_time=0.95, rate_func=smooth)
+        self.play(Transform(circle, final_ellipse), run_time=0.95, rate_func=smooth)
+        self.play(
+            Indicate(formula.get_part_by_tex(r"\Sigma"), color=YELLOW),
+            Indicate(circle, color=TEAL),
+            run_time=0.65,
+        )
+        self.wait(0.45)
+        self.wipe()
+
+    def scene_10_svd_example(self):
+        title = self.Title("Ví dụ phân rã ma trận SVD", TEAL)
+        left = self.left_col(MathTex(r"B=" + tex_matrix(self.svd_matrix)).scale(1.05), y=0.6)
+        right = self.right_col(MathTex(r"B=U\Sigma V^T", color=YELLOW).scale(0.98), y=0.6)
+        explain = VGroup(
+            self.VText("Theo code:", 24, GRAY_A),
+            MathTex(r"B^T B", color=GRAY_A).scale(0.5),
+            self.VText("-> trị riêng -> singular values -> V -> U", 24, GRAY_A),
+        ).arrange(RIGHT, buff=0.12).to_edge(DOWN)
+
+        self.play(FadeIn(title), run_time=0.8)
+        self.play(FadeIn(left, shift=DOWN * 0.25), Write(right), FadeIn(explain), run_time=1.2)
+        self.wait(3)
+        self.wipe()
+
+    def scene_11_svd_ata(self):
+        title = VGroup(
+            self.VText("Tính", 38, TEAL, BOLD),
+            MathTex(r"B^T B", color=TEAL).scale(0.78),
+            self.VText("từng ô", 38, TEAL, BOLD),
+        ).arrange(RIGHT, buff=0.18).to_edge(UP)
+        at = matrixTranspose(self.svd_matrix)
+        left = self.left_col(MathTex(r"B^T B=" + tex_matrix(at) + tex_matrix(self.svd_matrix)).scale(0.74), y=1.05, max_width=6.15)
+        result = self.right_col(MathTex(r"B^T B=" + tex_matrix(self.svd_ata), color=YELLOW).scale(0.88), y=0.55)
+        a11 = at[0][0] * self.svd_matrix[0][0] + at[0][1] * self.svd_matrix[1][0]
+        a12 = at[0][0] * self.svd_matrix[0][1] + at[0][1] * self.svd_matrix[1][1]
+        a21 = at[1][0] * self.svd_matrix[0][0] + at[1][1] * self.svd_matrix[1][0]
+        a22 = at[1][0] * self.svd_matrix[0][1] + at[1][1] * self.svd_matrix[1][1]
+        calcs = VGroup(
+            MathTex(rf"{tex_num(at[0][0])}\cdot{tex_num(self.svd_matrix[0][0])}+{tex_num(at[0][1])}\cdot{tex_num(self.svd_matrix[1][0])}={tex_num(a11)}"),
+            MathTex(rf"{tex_num(at[0][0])}\cdot{tex_num(self.svd_matrix[0][1])}+{tex_num(at[0][1])}\cdot{tex_num(self.svd_matrix[1][1])}={tex_num(a12)}"),
+            MathTex(rf"{tex_num(at[1][0])}\cdot{tex_num(self.svd_matrix[0][0])}+{tex_num(at[1][1])}\cdot{tex_num(self.svd_matrix[1][0])}={tex_num(a21)}"),
+            MathTex(rf"{tex_num(at[1][0])}\cdot{tex_num(self.svd_matrix[0][1])}+{tex_num(at[1][1])}\cdot{tex_num(self.svd_matrix[1][1])}={tex_num(a22)}"),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.28).scale(0.72)
+        self.left_col(calcs, y=-1.0, max_width=6.0)
+        explain = VGroup(
+            self.VText("Mỗi ô của", 24, GRAY_A),
+            MathTex(r"B^T B", color=GRAY_A).scale(0.5),
+            self.VText("được tạo từ một tích vô hướng.", 24, GRAY_A),
+        ).arrange(RIGHT, buff=0.12).to_edge(DOWN)
+
+        self.play(FadeIn(title), Write(left), FadeIn(explain), run_time=1.1)
+        for calc in calcs:
+            self.play(Write(calc), run_time=0.75)
+            self.play(Indicate(calc, color=YELLOW), run_time=0.4)
+        self.play(FadeIn(result), Circumscribe(result, color=YELLOW), run_time=1.0)
+        self.wait(2.5)
+        self.wipe()
+
+    def scene_12_svd_eigenvalues(self):
+        title = VGroup(
+            self.VText("Trị riêng của", 38, TEAL, BOLD),
+            MathTex(r"B^T B", color=TEAL).scale(0.78),
+        ).arrange(RIGHT, buff=0.18).to_edge(UP)
+        a, b = self.svd_ata[0]
+        c, d = self.svd_ata[1]
+        trace = a + d
+        det = a * d - b * c
+        ev1, ev2 = self.svd_lambdas
+        sigma1, sigma2 = self.svd_sigma[0][0], self.svd_sigma[1][1]
+        equations = [
+            r"\det(B^T B-\lambda I)=0",
+            rf"\det\begin{{pmatrix}}{tex_num(a)}-\lambda&{tex_num(b)}\\{tex_num(c)}&{tex_num(d)}-\lambda\end{{pmatrix}}=0",
+            rf"({tex_num(a)}-\lambda)({tex_num(d)}-\lambda)-{tex_num(b * c)}=0",
+            rf"\lambda^2-{tex_num(trace)}\lambda+{tex_num(det)}=0",
+            rf"\lambda_1={tex_num(ev1)},\qquad\lambda_2={tex_num(ev2)}",
+        ]
+        explain = VGroup(
+            self.VText("Singular values là căn bậc hai của trị riêng dương của", 24, GRAY_A),
+            MathTex(r"B^T B", color=GRAY_A).scale(0.5),
+        ).arrange(RIGHT, buff=0.12)
+        self.fit(explain, max_width=11.2)
+        explain.to_edge(DOWN)
+
+        self.equation_flow(
+            title,
+            equations,
+            rf"\sigma_1=\sqrt{{{tex_num(ev1)}}}={tex_num(sigma1)},\qquad \sigma_2=\sqrt{{{tex_num(ev2)}}}={tex_num(sigma2)}",
+            explain,
+            YELLOW,
+            highlights=[tex_num(sigma1), tex_num(sigma2)],
+        )
+        self.wait(2.5)
+        self.wipe()
+
+    def scene_13_svd_vectors(self):
+        title = self.Title("Vector riêng tạo nên V", TEAL)
+        ev1, ev2 = self.svd_lambdas
+        v1_vec = get_col(self.svd_v, 0)
+        v2_vec = get_col(self.svd_v, 1)
+        left = VGroup(
+            MathTex(rf"\lambda_1={tex_num(ev1)}:\quad (B^T B-{tex_num(ev1)}I)x=0"),
+            MathTex(tex_matrix(sub_lambda(self.svd_ata, ev1)) + r"x=0\Rightarrow x_1=x_2"),
+            MathTex(r"v_1=" + tex_column(v1_vec), color=GREEN),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.35).scale(0.68)
+        self.left_col(left, y=1.0, max_width=6.1)
+        right = VGroup(
+            MathTex(rf"\lambda_2={tex_num(ev2)}:\quad (B^T B-{tex_num(ev2)}I)x=0"),
+            MathTex(tex_matrix(sub_lambda(self.svd_ata, ev2)) + r"x=0\Rightarrow x_1=-x_2"),
+            MathTex(r"v_2=" + tex_column(v2_vec), color=ORANGE),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.35).scale(0.68).next_to(left, DOWN, buff=0.55).align_to(left, LEFT)
+        axes = self.right_col(self.axes_small(), y=-0.15, max_width=4.6)
+        v1 = self.arrow_vec(axes, scaled_vec(v1_vec, 2.0), GREEN, r"v_1")
+        v2 = self.arrow_vec(axes, scaled_vec(v2_vec, 2.0), ORANGE, r"v_2")
+        v_matrix = self.center_content(MathTex(r"V=" + tex_matrix(self.svd_v), color=YELLOW).scale(0.68), y=-2.85, max_width=7.0)
+
+        self.play(FadeIn(title), Create(axes), run_time=1.0)
+        self.write_sequence(left, wait=0.25, run_time=0.7)
+        self.play(GrowArrow(v1[0]), FadeIn(v1[1]), run_time=0.8)
+        self.write_sequence(right, wait=0.25, run_time=0.7)
+        self.play(GrowArrow(v2[0]), FadeIn(v2[1]), run_time=0.8)
+        self.play(TransformFromCopy(v1, v_matrix), TransformFromCopy(v2, v_matrix), run_time=1.1)
+        self.play(Circumscribe(v_matrix, color=YELLOW), run_time=1.0)
+        self.wait(2.5)
+        self.wipe()
+
+    def scene_14_svd_sigma_u(self):
+        title = self.Title("Dựng Σ và tính U", TEAL)
+        v1_vec = get_col(self.svd_v, 0)
+        v2_vec = get_col(self.svd_v, 1)
+        u1_vec = get_col(self.svd_u, 0)
+        u2_vec = get_col(self.svd_u, 1)
+        sigma1, sigma2 = self.svd_sigma[0][0], self.svd_sigma[1][1]
+        av1 = [row[0] * v1_vec[0] + row[1] * v1_vec[1] for row in self.svd_matrix]
+        sigma = self.right_col(MathTex(r"\Sigma=" + tex_matrix(self.svd_sigma), color=YELLOW).scale(0.86), y=1.2)
+        u1_steps = VGroup(
+            MathTex(r"u_1=\frac{Bv_1}{\sigma_1}"),
+            MathTex(r"Bv_1=" + tex_matrix(self.svd_matrix) + tex_column(v1_vec) + "=" + tex_column(av1)),
+            MathTex(rf"u_1=\frac1{{{tex_num(sigma1)}}}" + tex_column(av1) + "=" + tex_column(u1_vec), color=GREEN),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.35).scale(0.6)
+        self.left_col(u1_steps, y=0.75, max_width=6.2)
+        u2_steps = VGroup(
+            MathTex(r"u_2=\frac{Bv_2}{\sigma_2}"),
+            MathTex(r"u_2=" + tex_column(u2_vec), color=ORANGE),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.35).scale(0.68).next_to(u1_steps, DOWN, buff=0.5).align_to(u1_steps, LEFT)
+        u_final = self.center_content(MathTex(r"U=" + tex_matrix(self.svd_u), color=YELLOW).scale(0.68), y=-2.85, max_width=7.0)
+
+        self.play(FadeIn(title), Write(sigma), run_time=1.0)
+        self.write_sequence(u1_steps, wait=0.35, run_time=0.8)
+        self.play(Circumscribe(u1_steps[-1], color=GREEN), run_time=0.8)
+        self.write_sequence(u2_steps, wait=0.35, run_time=0.8)
+        self.play(TransformFromCopy(u1_steps[-1], u_final), TransformFromCopy(u2_steps[-1], u_final), run_time=1.0)
+        self.play(Circumscribe(u_final, color=YELLOW), run_time=1.0)
+        self.wait(2.5)
+        self.wipe()
+
+    def scene_15_svd_final(self):
+        title = self.Title("Công thức SVD hoàn chỉnh", TEAL)
+        formula = self.center_content(MathTex(r"B=U\Sigma V^T", color=YELLOW).scale(1.0), y=2.0)
+        numeric = MathTex(
+            tex_matrix(self.svd_matrix)
+            + r"="
+            + tex_matrix(self.svd_u)
+            + tex_matrix(self.svd_sigma)
+            + tex_matrix(self.svd_v)
+            + r"^T"
+        ).scale(0.55)
+        self.center_content(numeric, y=0.35, max_width=11.6)
+        labels = VGroup(
+            VGroup(MathTex(r"V^T:", color=BLUE).scale(0.5), self.VText("xoay", 22, BLUE)).arrange(RIGHT, buff=0.12),
+            VGroup(MathTex(r"\Sigma:", color=YELLOW).scale(0.5), self.VText("kéo giãn", 22, YELLOW)).arrange(RIGHT, buff=0.12),
+            VGroup(MathTex(r"U:", color=RED).scale(0.5), self.VText("xoay lại", 22, RED)).arrange(RIGHT, buff=0.12),
+        ).arrange(RIGHT, buff=0.55).to_edge(DOWN)
+
+        self.play(FadeIn(title), run_time=0.8)
+        self.play(Write(formula), run_time=1.0)
+        self.play(Write(numeric), run_time=1.4)
+        self.play(FadeIn(labels[0]), FadeIn(labels[1]), FadeIn(labels[2]), run_time=1.0)
+        self.wait(2.5)
+        self.wipe()
+
+    def scene_16_svd_geometry(self):
+        title = self.Title("Trực quan SVD: rotate - scale - rotate", TEAL).shift(DOWN * 0.16)
+        formula = MathTex(r"B=U\Sigma V^T", color=YELLOW).scale(0.72).to_edge(LEFT, buff=0.78).shift(UP * 2.42)
+        formula.set_stroke(BLACK, width=4, background=True)
+        frame = self.camera.frame
+        frame.save_state()
+        axes = NumberPlane(
+            x_range=[-4, 4, 1],
+            y_range=[-3, 3, 1],
+            x_length=8.0,
+            y_length=6.0,
+            background_line_style={"stroke_opacity": 0.0, "stroke_width": 1},
+        ).shift(DOWN * 0.15)
+        radius = 1.15
+        origin = axes.c2p(0, 0)
+        sample_angles = np.linspace(0, TAU, 32, endpoint=False)
+        deformation_grid = VGroup(
+            *[
+                Line(axes.c2p(x, -3), axes.c2p(x, 3), color=BLUE_E, stroke_width=1.1).set_opacity(0.24)
+                for x in np.arange(-4, 4.01, 0.5)
             ],
-            accent=TEAL_B,
-            font_size=19,
-            width=8.7,
-        ).to_edge(DOWN)
-
-        self.play(FadeIn(header), FadeIn(chain_formula), run_time=4.0)
-        self.play(FadeIn(cards[0]), run_time=2.0)
-        for idx, arrow in enumerate(arrows):
-            self.play(GrowArrow(arrow), FadeIn(cards[idx + 1]), run_time=3.2)
-            self.wait(2)
-        self.play(FadeIn(explanation), run_time=4.0)
-        self.wait(22)
-        self.play(FadeOut(VGroup(header, chain_formula, cards, arrows, explanation)), run_time=3.0)
-
-    def show_diagonalization_verification(self, diag_data):
-        mat_p = diag_data["p"]
-        mat_d = diag_data["d"]
-        mat_p_inv = diag_data["p_inv"]
-
-        arr_a = np_matrix(diag_data["a"])
-        arr_rebuild = np_matrix(multiply_chain(mat_p, mat_d, mat_p_inv))
-        err_rebuild = max_abs_error(arr_a, arr_rebuild)
-
-        arr_d = np_matrix(mat_d)
-        arr_p = np_matrix(mat_p)
-        arr_p_inv = np_matrix(mat_p_inv)
-        arr_a3_direct = np.linalg.matrix_power(arr_a, 3)
-        arr_d3 = np.linalg.matrix_power(arr_d, 3)
-        arr_a3_diag = arr_p @ arr_d3 @ arr_p_inv
-        err_power = max_abs_error(arr_a3_direct, arr_a3_diag)
-
-        header = chapter_header(
-            8,
-            "Diagonalization Check",
-            "Verify A = P D P^-1 and show the power shortcut.",
-            accent=YELLOW_B,
-        )
-        formula = formula_card(
-            "Power formula",
-            "A^3 = P D^3 P^-1",
-            accent=YELLOW_B,
-            detail="Only D needs to be powered; diagonal powers are cheap.",
-            width=7.0,
-        ).next_to(header, DOWN, aligned_edge=LEFT, buff=0.25)
-
-        top = VGroup(
-            matrix_card("A", arr_a, accent=WHITE, font_size=17),
-            matrix_card("P D P^-1", arr_rebuild, accent=GREEN_B, font_size=17),
-            formula_card("Error", f"max = {fmt_sci(err_rebuild)}", accent=GREEN_B, width=2.8),
-        ).arrange(RIGHT, buff=0.36).shift(UP * 0.45)
-        top.scale_to_fit_width(11.2)
-
-        bottom = VGroup(
-            matrix_card("D^3", arr_d3, accent=YELLOW_B, font_size=16),
-            matrix_card("P D^3 P^-1", arr_a3_diag, accent=BLUE_B, font_size=16),
-            matrix_card("A^3 direct", arr_a3_direct, accent=WHITE, font_size=16),
-            formula_card("Power error", f"max = {fmt_sci(err_power)}", accent=GREEN_B, width=2.9),
-        ).arrange(RIGHT, buff=0.24).shift(DOWN * 1.35)
-        bottom.scale_to_fit_width(12.0)
-
-        note = bullet_panel(
-            "Takeaway",
-            [
-                "The reconstruction error is tiny, so the computed factors reproduce A.",
-                "For powers, D^3 is just cubing the diagonal entries.",
-                "This is the practical benefit of diagonalization in scientific computing.",
+            *[
+                Line(axes.c2p(-4, y), axes.c2p(4, y), color=TEAL_E, stroke_width=1.1).set_opacity(0.24)
+                for y in np.arange(-3, 3.01, 0.5)
             ],
-            accent=YELLOW_B,
-            font_size=18,
-            width=8.9,
-        ).to_edge(DOWN)
-
-        self.play(FadeIn(header), FadeIn(formula), run_time=4.0)
-        self.play(FadeIn(top), run_time=5.0)
-        self.wait(12)
-        self.play(FadeIn(bottom), run_time=6.0)
-        self.play(FadeIn(note), run_time=4.0)
-        self.wait(22)
-        self.play(FadeOut(VGroup(header, formula, top, bottom, note)), run_time=3.0)
-
-    def show_closing(self):
-        title = text_block("Summary", font_size=40, color=WHITE, weight=BOLD_WEIGHT)
-        summary = bullet_panel(
-            "What the video covered",
-            [
-                "A concrete matrix was introduced for SVD and another for diagonalization.",
-                "SVD was visualized as V^T rotation, Sigma scaling, and U rotation.",
-                "The matrix A was reconstructed from U Sigma V^T and checked numerically.",
-                "Eigenvalues and eigenvectors were shown through A v_i = lambda_i v_i.",
-                "A = P D P^-1 and A^3 = P D^3 P^-1 were verified with error values.",
-            ],
-            accent=GREEN_B,
-            font_size=20,
-            width=9.7,
         )
-        implementation = formula_card(
-            "Code boundary",
-            "Manim = visualization, local Python files = matrix algorithms",
-            accent=BLUE_B,
-            detail="The core SVD and diagonalization computations are not reimplemented here.",
-            width=9.4,
+        circle = Circle(radius=radius, color=WHITE, stroke_width=4).move_to(axes.c2p(0, 0))
+        spokes = VGroup(
+            *[
+                Line(
+                    origin,
+                    axes.c2p(radius * np.cos(theta), radius * np.sin(theta)),
+                    color=GRAY_B,
+                    stroke_width=1,
+                ).set_opacity(0.22)
+                for theta in sample_angles[::2]
+            ]
         )
-        runtime = formula_card(
-            "Approximate runtime",
-            f"{approximate_runtime_seconds() // 60} min {approximate_runtime_seconds() % 60} sec",
-            accent=YELLOW_B,
-            detail="Long enough for the assignment requirement and still concise.",
-            width=5.4,
+        samples = VGroup(
+            *[
+                Dot(
+                    axes.c2p(radius * np.cos(theta), radius * np.sin(theta)),
+                    radius=0.032,
+                    color=YELLOW,
+                ).set_opacity(0.72)
+                for theta in sample_angles
+            ]
         )
-        group = VGroup(title, summary, implementation, runtime).arrange(DOWN, buff=0.34)
+        e1 = Arrow(axes.c2p(0, 0), axes.c2p(radius, 0), buff=0, color=RED, stroke_width=6)
+        e2 = Arrow(axes.c2p(0, 0), axes.c2p(0, radius), buff=0, color=GREEN, stroke_width=6)
+        x_data = np.array([0.95, 0.56])
+        x = Arrow(axes.c2p(0, 0), axes.c2p(x_data[0], x_data[1]), buff=0, color=YELLOW, stroke_width=6)
+        labels = VGroup(
+            MathTex(r"e_1", color=RED).scale(0.65).next_to(e1.get_end(), DOWN, buff=0.08),
+            MathTex(r"e_2", color=GREEN).scale(0.65).next_to(e2.get_end(), LEFT, buff=0.08),
+            MathTex(r"x", color=YELLOW).scale(0.65).next_to(x.get_end(), UR, buff=0.08),
+        )
+        space = VGroup(deformation_grid, circle, spokes, samples, e1, e2, x)
 
-        self.play(FadeIn(title), run_time=2.5)
-        self.play(FadeIn(summary), run_time=5.0)
-        self.play(FadeIn(implementation), FadeIn(runtime), run_time=4.0)
-        self.wait(18)
-        self.play(FadeOut(group), run_time=3.0)
+        v1_vec = scaled_vec(get_col(self.svd_v, 0), 2.25)
+        v2_vec = scaled_vec(get_col(self.svd_v, 1), 2.25)
+        singular_lines = VGroup(
+            DashedLine(axes.c2p(-v1_vec[0], -v1_vec[1]), axes.c2p(v1_vec[0], v1_vec[1]), color=BLUE, stroke_width=3, dash_length=0.18),
+            DashedLine(axes.c2p(-v2_vec[0], -v2_vec[1]), axes.c2p(v2_vec[0], v2_vec[1]), color=TEAL, stroke_width=3, dash_length=0.18),
+        ).set_opacity(0.85)
+        singular_labels = VGroup(
+            MathTex(r"v_1", color=BLUE).scale(0.65).next_to(axes.c2p(v1_vec[0], v1_vec[1]), UR, buff=0.04),
+            MathTex(r"v_2", color=TEAL).scale(0.65).next_to(axes.c2p(v2_vec[0], v2_vec[1]), UL, buff=0.04),
+        ).set_opacity(0.85)
+        angle_arc = Arc(radius=0.62, start_angle=0, angle=PI / 4, color=BLUE, stroke_width=4).move_arc_center_to(origin)
+        angle_label = MathTex(r"45^\circ", color=BLUE).scale(0.55).move_to(axes.c2p(0.78, 0.32))
+
+        arr_vt = np.array(self.svd_vt, dtype=float)
+        arr_sigma = np.array(self.svd_sigma, dtype=float)
+        arr_u = np.array(self.svd_u, dtype=float)
+
+        def apply_2d(mat):
+            def func(point):
+                source = np.array([point[0] - axes.c2p(0, 0)[0], point[1] - axes.c2p(0, 0)[1]])
+                xy = mat @ source
+                return np.array([xy[0] + axes.c2p(0, 0)[0], xy[1] + axes.c2p(0, 0)[1], point[2]])
+            return func
+
+        after_vt = space.copy().apply_function(apply_2d(arr_vt))
+        after_sigma = after_vt.copy().apply_function(apply_2d(arr_sigma))
+        after_u = after_sigma.copy().apply_function(apply_2d(arr_u))
+        singular_lines_after_vt = singular_lines.copy().apply_function(apply_2d(arr_vt))
+        sigma_outline = after_sigma[1].copy().set_color(YELLOW).set_stroke(width=6, opacity=0.95)
+        final_outline = after_u[1].copy().set_color(RED).set_stroke(width=6, opacity=0.95)
+
+        sigma1 = self.svd_sigma[0][0]
+        sigma2 = self.svd_sigma[1][1]
+        stretch_axes = VGroup(
+            DoubleArrow(axes.c2p(-radius * sigma1, 0), axes.c2p(radius * sigma1, 0), buff=0, color=YELLOW, stroke_width=4, tip_length=0.16),
+            DoubleArrow(axes.c2p(0, -radius * sigma2), axes.c2p(0, radius * sigma2), buff=0, color=TEAL, stroke_width=4, tip_length=0.16),
+        )
+        stretch_labels = VGroup(
+            MathTex(r"\sigma_1=" + tex_num(sigma1), color=YELLOW).scale(0.65).next_to(stretch_axes[0], DOWN, buff=0.12),
+            MathTex(r"\sigma_2=" + tex_num(sigma2), color=TEAL).scale(0.65).next_to(stretch_axes[1], RIGHT, buff=0.12),
+        )
+        final_stretch_axes = stretch_axes.copy().apply_function(apply_2d(arr_u))
+        x_vt = arr_vt @ x_data
+        x_sigma = arr_sigma @ x_vt
+        x_final = arr_u @ x_sigma
+        final_x_label = MathTex(r"Bx", color=RED).scale(0.65).next_to(axes.c2p(x_final[0], x_final[1]), UR, buff=0.06)
+        phase = VGroup(
+            MathTex(r"I", color=WHITE).scale(0.65),
+            MathTex(r"\to", color=GRAY_A).scale(0.65),
+            MathTex(r"V^T", color=GRAY_A).scale(0.65),
+            MathTex(r"\to", color=GRAY_A).scale(0.65),
+            MathTex(r"\Sigma", color=GRAY_A).scale(0.65),
+            MathTex(r"\to", color=GRAY_A).scale(0.65),
+            MathTex(r"U", color=GRAY_A).scale(0.65),
+        ).arrange(RIGHT, buff=0.14).to_edge(LEFT, buff=0.78).shift(UP * 2.02)
+        phase.set_stroke(BLACK, width=3, background=True)
+        cap_singular = VGroup(
+            self.VText("Các ưhướng", 24, TEAL),
+            MathTex(r"v_1,\ v_2", color=TEAL).scale(0.5),
+            self.VText("cho biết nên xoay hệ tọa độ như thế nào", 24, TEAL),
+        ).arrange(RIGHT, buff=0.12).to_edge(DOWN)
+        cap_vt = VGroup(
+            self.VText("Bước 1:", 24, BLUE),
+            MathTex(r"V^T", color=BLUE).scale(0.5),
+            self.VText("đưa hai hướng singular về đúng trục tọa độ", 24, BLUE),
+        ).arrange(RIGHT, buff=0.12).to_edge(DOWN)
+        cap_sigma = VGroup(
+            self.VText("Bước 2:", 24, YELLOW),
+            MathTex(r"\Sigma", color=YELLOW).scale(0.5),
+            self.VText("kéo dài theo trục", 24, YELLOW),
+            MathTex(r"\sigma_1", color=YELLOW).scale(0.5),
+            self.VText("và giữ trục", 24, YELLOW),
+            MathTex(r"\sigma_2", color=YELLOW).scale(0.5),
+            self.VText("ngắn hơn", 24, YELLOW),
+        ).arrange(RIGHT, buff=0.1)
+        self.fit(cap_sigma, max_width=11.2)
+        cap_sigma.to_edge(DOWN)
+        captions = [
+            self.Explain("Bắt đầu từ đường tròn đơn vị trong hệ tọa độ chuẩn", WHITE),
+            cap_singular,
+            cap_vt,
+            self.Explain("Lưới và đường tròn cùng xoay: toàn bộ mặt phẳng đang đổi tọa độ", BLUE),
+            cap_sigma,
+            self.Explain("Lưới bị kéo giãn cùng đường tròn, tạo thành ellipse", YELLOW),
+            self.Explain("Bước 3: U xoay ellipse sang hệ đích của phép biến đổi B", RED),
+            self.Explain("Kết quả cuối cùng là ảnh hình học của toàn bộ đường tròn đơn vị", RED),
+        ]
+        maps = [
+            MathTex(r"x\mapsto V^Tx", color=BLUE).scale(0.62).to_edge(LEFT, buff=0.78).shift(UP * 1.62),
+            MathTex(r"V^Tx\mapsto \Sigma V^Tx", color=YELLOW).scale(0.62).to_edge(LEFT, buff=0.78).shift(UP * 1.62),
+            MathTex(r"\Sigma V^Tx\mapsto U\Sigma V^Tx", color=RED).scale(0.62).to_edge(LEFT, buff=0.78).shift(UP * 1.62),
+        ]
+        for item in maps:
+            item.set_stroke(BLACK, width=4, background=True)
+        final = VGroup(
+            MathTex(r"B=U\Sigma V^T", color=YELLOW).scale(0.68),
+            self.VText("= xoay - co giãn - xoay", 25, YELLOW),
+        ).arrange(RIGHT, buff=0.18).to_edge(DOWN)
+
+        self.play(
+            FadeIn(title),
+            FadeIn(formula),
+            FadeIn(phase),
+            Create(axes),
+            Create(deformation_grid),
+            Create(circle),
+            Create(spokes),
+            GrowArrow(e1),
+            GrowArrow(e2),
+            GrowArrow(x),
+            FadeIn(labels),
+            FadeIn(captions[0]),
+            run_time=2.2,
+        )
+        self.play(LaggedStart(*[FadeIn(dot) for dot in samples], lag_ratio=0.025), run_time=1.2)
+        self.play(frame.animate.scale(0.98), run_time=1.1, rate_func=smooth)
+        self.wait(0.7)
+        self.play(
+            FadeOut(captions[0], shift=UP * 0.08),
+            FadeIn(captions[1], shift=UP * 0.08),
+            Create(singular_lines),
+            FadeIn(singular_labels),
+            Create(angle_arc),
+            FadeIn(angle_label),
+            phase[2].animate.set_color(BLUE),
+            phase[0].animate.set_opacity(0.38),
+            run_time=1.6,
+        )
+        self.wait(1.0)
+        self.play(
+            FadeOut(labels),
+            FadeOut(angle_arc),
+            FadeOut(angle_label),
+            FadeOut(captions[1], shift=UP * 0.08),
+            FadeIn(captions[2], shift=UP * 0.08),
+            FadeIn(maps[0], shift=LEFT * 0.08),
+            Transform(space, after_vt),
+            Transform(singular_lines, singular_lines_after_vt),
+            FadeOut(singular_labels),
+            frame.animate.shift(RIGHT * 0.16).scale(0.99),
+            run_time=3.4,
+            rate_func=smooth,
+        )
+        self.play(FadeOut(captions[2], shift=UP * 0.08), FadeIn(captions[3], shift=UP * 0.08), run_time=0.8)
+        self.wait(1.2)
+        self.play(
+            FadeOut(captions[3], shift=UP * 0.08),
+            FadeIn(captions[4], shift=UP * 0.08),
+            FadeOut(maps[0], shift=UP * 0.05),
+            FadeIn(maps[1], shift=UP * 0.05),
+            Transform(space, after_sigma),
+            FadeOut(singular_lines),
+            phase[4].animate.set_color(YELLOW),
+            phase[2].animate.set_opacity(0.45),
+            frame.animate.shift(RIGHT * 0.10).scale(0.99),
+            run_time=3.8,
+            rate_func=smooth,
+        )
+        self.play(Create(sigma_outline), Create(stretch_axes), FadeIn(stretch_labels), run_time=1.25)
+        self.play(FadeOut(captions[4], shift=UP * 0.08), FadeIn(captions[5], shift=UP * 0.08), run_time=0.8)
+        self.wait(1.3)
+        self.play(
+            FadeOut(captions[5], shift=UP * 0.08),
+            FadeIn(captions[6], shift=UP * 0.08),
+            FadeOut(maps[1], shift=UP * 0.05),
+            FadeIn(maps[2], shift=UP * 0.05),
+            Transform(space, after_u),
+            Transform(stretch_axes, final_stretch_axes),
+            FadeOut(stretch_labels),
+            FadeOut(sigma_outline),
+            phase[6].animate.set_color(RED),
+            phase[4].animate.set_opacity(0.45),
+            frame.animate.shift(LEFT * 0.26).scale(1.03),
+            run_time=3.6,
+            rate_func=smooth,
+        )
+        self.play(Create(final_outline), FadeIn(final_x_label), run_time=1.1)
+        self.play(FadeOut(captions[6], shift=UP * 0.08), FadeIn(captions[7], shift=UP * 0.08), run_time=0.8)
+        self.wait(1.6)
+        self.play(Restore(frame), run_time=1.2, rate_func=smooth)
+        self.play(
+            FadeOut(captions[7], shift=UP * 0.08),
+            FadeIn(final, shift=UP * 0.08),
+            FadeOut(maps[2]),
+            FadeOut(stretch_axes),
+            FadeOut(final_outline),
+            FadeOut(final_x_label),
+            FadeOut(phase),
+            run_time=1.2,
+        )
+        self.wait(3.0)
+        self.wipe()
