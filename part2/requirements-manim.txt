@@ -1,7 +1,6 @@
 # Python >=3.11
-sudo apt install build-essential python3-dev pkg-config libcairo2-dev libpango1.0-dev ffmpeg dvisvgm
-# sudo apt install texlive-latex-extra texlive-fonts-recommended texlive-luatex texlive-lang-other fonts-texgyre fonts-texgyre-math
-# sudo apt install texlive-xetex
+# sudo apt install build-essential python3-dev pkg-config libcairo2-dev libpango1.0-dev ffmpeg dvisvgm
+
 manim==0.20.1
 numpy>=2.1,<2.7
 scipy>=1.15,<1.18
