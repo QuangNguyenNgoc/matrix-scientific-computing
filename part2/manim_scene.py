@@ -2,8 +2,8 @@ from manim import *
 import unicodedata
 import numpy as np
 
-from decomposition import svdDecomp
-from diagonalization import diagonalize, matrixMultiply, matrixTranspose
+from decomposition import svd_decomp
+from diagonalization import diagonalize, mat_mul, mat_transpose
 
 
 FONT = "Times New Roman"
@@ -120,9 +120,9 @@ class Part2StoryboardMathTex(MovingCameraScene):
         self.diag_eigs = [self.diag_d[i][i] for i in range(len(self.diag_d))]
 
         self.svd_matrix = SVD_MATRIX
-        self.svd_u, self.svd_sigma, self.svd_vt = svdDecomp(self.svd_matrix)
-        self.svd_v = matrixTranspose(self.svd_vt)
-        self.svd_ata = matrixMultiply(matrixTranspose(self.svd_matrix), self.svd_matrix)
+        self.svd_u, self.svd_sigma, self.svd_vt = svd_decomp(self.svd_matrix)
+        self.svd_v = mat_transpose(self.svd_vt)
+        self.svd_ata = mat_mul(mat_transpose(self.svd_matrix), self.svd_matrix)
         self.svd_lambdas = [self.svd_sigma[i][i] ** 2 for i in range(len(self.svd_sigma))]
 
         self.scene_01_opening()
@@ -478,7 +478,7 @@ class Part2StoryboardMathTex(MovingCameraScene):
         ).scale(0.55)
         self.center_content(expanded, y=-1.0, max_width=11.6)
 
-        rebuilt = matrixMultiply(matrixMultiply(self.diag_p, self.diag_d), self.diag_p_inv)
+        rebuilt = mat_mul(mat_mul(self.diag_p, self.diag_d), self.diag_p_inv)
         check = MathTex(
             r"PDP^{-1}=" + tex_matrix(rebuilt) + r"=A",
             color=YELLOW,
@@ -605,7 +605,7 @@ class Part2StoryboardMathTex(MovingCameraScene):
             MathTex(r"B^T B", color=TEAL).scale(0.78),
             self.VText("từng ô", 38, TEAL, BOLD),
         ).arrange(RIGHT, buff=0.18).to_edge(UP)
-        at = matrixTranspose(self.svd_matrix)
+        at = mat_transpose(self.svd_matrix)
         left = self.left_col(MathTex(r"B^T B=" + tex_matrix(at) + tex_matrix(self.svd_matrix)).scale(0.74), y=1.05, max_width=6.15)
         result = self.right_col(MathTex(r"B^T B=" + tex_matrix(self.svd_ata), color=YELLOW).scale(0.88), y=0.55)
         a11 = at[0][0] * self.svd_matrix[0][0] + at[0][1] * self.svd_matrix[1][0]
