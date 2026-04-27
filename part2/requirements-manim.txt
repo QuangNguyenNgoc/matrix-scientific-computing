@@ -1,0 +1,11 @@
+# Python >=3.11
+# sudo apt install build-essential python3-dev pkg-config libcairo2-dev libpango1.0-dev ffmpeg dvisvgm
+
+manim==0.20.1
+numpy>=2.1,<2.7
+scipy>=1.15,<1.18
+pillow>=11,<13
+av>=15,<18
+manimpango>=0.6.1,<1.0.0
+pycairo>=1.14,<2.0.0
+skia-pathops>=0.9.0
