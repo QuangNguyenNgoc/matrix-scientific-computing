@@ -73,7 +73,7 @@ Nhấn **Run All** trong Jupyter hoặc VS Code để chạy.
 ```bash
 # Tạo môi trường
 python -m venv venv-manim
-source venv-manim/bin/activatetrường
+source venv-manim/bin/activate
 
 # Cài thư viện Python
 pip install -r part2/requirements-manim.txt
