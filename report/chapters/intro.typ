@@ -20,13 +20,11 @@ Toàn bộ đồ án được thực hiện trên ngôn ngữ `Python`. Tự cà
 Để đảm bảo tính module và dễ quản lý, mở rộng và bảo trì, mã nguồn của đồ án được tổ chức theo cấu trúc phân cấp như sau:
 
 #codeblock((
-  ".",
+  "Group_12/",
   "├── part1/           # Thuật toán khử Gauss và ứng dụng",
   "├── part2/           # Chéo hóa và phân rã ma trận SVD",
   "├── part3/           # Giải hệ phương trình và Benchmark",
-  "├── notebooks/       # Demo Jupyter Notebook và Phân tích số liệu",
-  "├── tests/           # Hệ thống kiểm thử tự động (Unit Tests)",
-  "├── docs/            # Tài liệu",
   "├── report/          # Mã nguồn Typst và tài liệu báo cáo",
-  "└── requirements.txt # Danh sách thư viện phụ thuộc",
+  "└── requirements.txt ",
+  "└── README.md        ",
 ))
