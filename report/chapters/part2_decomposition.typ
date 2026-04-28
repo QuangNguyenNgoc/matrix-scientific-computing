@@ -30,31 +30,18 @@ Cột thư viện ma trận $U$ được đối xứng qua biểu thức $u_i = 
 
 `Manim` là một thư viện Python được thiết kế để tạo ra các hình ảnh động toán học chất lượng cao. Trong đồ án này, `Manim` được sử dụng để trực quan hóa các khái niệm trừu tượng của đại số tuyến tính, giúp dễ dàng nắm bắt các phép biến đổi ma trận, sự thay đổi cơ sở và các tính chất của trị riêng, vector riêng.
 
-Nội dung video xoay quanh:
+Nội dung video xoay quanh giới thiệu lý thuyết, mô phỏng thuật toán cho ma trận A cụ thể:
+- Mô phỏng quá trình chéo hóa ma trận $A=P D P^(-1)$
+- Trực quan quá trình phân rã SVD. Cụ thể là trục quan phép biến đổi hình học rotate-scale-rotate trên hình tròn đơn vị.
 
-- abc
-- xyz 
-
-*Link video:* #link("https://www.youtube.com/watch?v=24120149")[https://www.youtube.com/watch?v=24120149]
-
-#let blank_img(name) = rect(
-  width: 100%,
-  height: 180pt,
-  fill: white,
-  stroke: 0.5pt + soft_color.lighten(50%),
-  radius: 4pt,
-)[
-  #set align(center + horizon)
-  #set text(fill: soft_color, size: 10pt)
-  [Hình ảnh minh họa: #name]
-]
+*Link video:* #link("https://youtu.be/sWpLmDTU0R0")[https://youtu.be/sWpLmDTU0R0]
 
 #figure(
-  blank_img("manim_svd_snapshot.png"),
+  image("../images/manim_svd_snapshot.png", width: 100%),
   caption: [Minh họa hệ vector thay đổi cơ sở và dãn không gian theo các trị kỳ dị (SVD)]
 ) <fig:manim-svd>
 
 #figure(
-  blank_img("manim_eigen_snapshot.png"),
+  image("../images/manim_eigen_snapshot.png", width: 100%),
   caption: [Tiến trình phát hiện và tính toán các đặc trưng giá trị riêng dựa trên sự bảo toàn phương hướng]
 ) <fig:manim-eigen>
