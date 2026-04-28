@@ -30,3 +30,18 @@
     )
   ]
 ]
+
+// styled table helper
+#let styled-table(columns, header, data, caption, inset: 8pt) = figure(
+  kind: table,
+  table(
+    columns: columns,
+    align: (center + horizon,) * (columns.len()),
+    stroke: 0.5pt + title_color.lighten(50%),
+    fill: (col, row) => if row == 0 { title_color } else if calc.even(row) { white } else { title_color.lighten(95%) },
+    inset: inset,
+    table.header(..header),
+    ..data,
+  ),
+  caption: caption,
+)
