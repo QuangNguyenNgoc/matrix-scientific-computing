@@ -15,7 +15,7 @@
         ),
     stroke: 0.5pt + title_color.lighten(50%),
     fill: (col, row) => if row == 0 { title_color } else if calc.even(row) { white } else { title_color.lighten(95%) },
-    inset: 10pt,
+    inset: 8pt,
 
     table.header(
       [*#text(white)[Case]*],
@@ -35,7 +35,6 @@
 == Thiết lập benchmark
 
 Tóm tắt cấu hình benchmark đã dùng trong @sec:benchmark nhằm giúp việc đối chiếu số liệu được rõ ràng:
-
 -  Thực nghiệm A sử dụng ma trận chéo trội nghiêm ngặt với các kích thước
   $n in {50, 100, 200, 500, 1000}$.
 - thực nghiệm B sử dụng hai lớp dữ liệu:
@@ -49,7 +48,6 @@ Tóm tắt cấu hình benchmark đã dùng trong @sec:benchmark nhằm giúp vi
 - Các thước đo chính gồm: `Average Runtime`, `Relative Residual Error`, `Solution Error` và `Condition Number`.
 
 == Bảng số liệu benchmark
-
 #figure(
   kind: table,
   table(
@@ -57,7 +55,7 @@ Tóm tắt cấu hình benchmark đã dùng trong @sec:benchmark nhằm giúp vi
     align: (center, center, center, center),
     stroke: 0.5pt + title_color.lighten(50%),
     fill: (col, row) => if row == 0 { title_color } else if calc.even(row) { white } else { title_color.lighten(95%) },
-    inset: 10pt,
+    inset: 7pt,
 
     table.header(
       [*#text(white)[Kích thước $n$]*],
@@ -82,7 +80,7 @@ Tóm tắt cấu hình benchmark đã dùng trong @sec:benchmark nhằm giúp vi
     align: (center, center, center, center),
     stroke: 0.5pt + title_color.lighten(50%),
     fill: (col, row) => if row == 0 { title_color } else if calc.even(row) { white } else { title_color.lighten(95%) },
-    inset: 10pt,
+    inset: 7pt,
 
     table.header(
       [*#text(white)[Kích thước $n$]*],
@@ -100,7 +98,7 @@ Tóm tắt cấu hình benchmark đã dùng trong @sec:benchmark nhằm giúp vi
   caption: [Sai số tương đối trên ma trận chéo trội theo kích thước $n$]
 ) <tbl:residual-full>
 
-#v(1em)
+#v(0.6em)
 
 #figure(
   kind: table,
@@ -109,7 +107,7 @@ Tóm tắt cấu hình benchmark đã dùng trong @sec:benchmark nhằm giúp vi
     align: (center, center, center, center, center),
     stroke: 0.5pt + title_color.lighten(50%),
     fill: (col, row) => if row == 0 { title_color } else if calc.even(row) { white } else { title_color.lighten(95%) },
-    inset: 8pt,
+    inset: 6pt,
 
     table.header(
       [*#text(white)[$n$]*],
@@ -129,7 +127,7 @@ Tóm tắt cấu hình benchmark đã dùng trong @sec:benchmark nhằm giúp vi
   caption: [Condition number và sai số nghiệm trên ma trận Hilbert]
 ) <tbl:hilbert-full>
 
-#v(1em)
+#v(0.6em)
 
 #figure(
   kind: table,
@@ -138,7 +136,7 @@ Tóm tắt cấu hình benchmark đã dùng trong @sec:benchmark nhằm giúp vi
     align: (center, center, center, center, center),
     stroke: 0.5pt + title_color.lighten(50%),
     fill: (col, row) => if row == 0 { title_color } else if calc.even(row) { white } else { title_color.lighten(95%) },
-    inset: 8pt,
+    inset: 6pt,
 
     table.header(
       [*#text(white)[$n$]*],
