@@ -1,10 +1,40 @@
 #import "../theme.typ": *
 = Phụ lục <sec:appendix>
 
+== Tổng hợp các trường hợp kiểm chứng
+
+#figure(
+  kind: table,
+  table(
+    columns: (0.4fr, 1.8fr, 2.0fr, 1.8fr),
+    align: (
+          center + horizon,
+          center + horizon,
+          center + horizon,
+          center + horizon,
+        ),
+    stroke: 0.5pt + title_color.lighten(50%),
+    fill: (col, row) => if row == 0 { title_color } else if calc.even(row) { white } else { title_color.lighten(95%) },
+    inset: 8pt,
+
+    table.header(
+      [*#text(white)[Case]*],
+      [*#text(white)[Mục đích kiểm tra]*],
+      [*#text(white)[Hàm liên quan]*],
+      [*#text(white)[Kết luận chính]*],
+    ),
+
+    [1], [Pivot gần 0], [gaussian_eliminate, back_substitution, determinant, inverse], [Pivoting hoạt động tốt, nghiệm đúng với Numpy],
+    [2], [Vô số nghiệm], [gaussian_eliminate, rank_and_basis, basis], [Rank < n, det = 0, tìm đúng biến tự do],
+    [3], [Vô nghiệm], [gaussian_eliminate], [Phát hiện mâu thuẫn],
+    [4], [Gần suy biến], [gaussian_eliminate, verify_solution], [Sai số cực thấp],
+  ),
+  caption: [Bảng tổng hợp các trường hợp kiểm chứng thuật toán khử Gauss]
+)
+
 == Thiết lập benchmark
 
 Tóm tắt cấu hình benchmark đã dùng trong @sec:benchmark nhằm giúp việc đối chiếu số liệu được rõ ràng:
-
 -  Thực nghiệm A sử dụng ma trận chéo trội nghiêm ngặt với các kích thước
   $n in {50, 100, 200, 500, 1000}$.
 - thực nghiệm B sử dụng hai lớp dữ liệu:
@@ -18,7 +48,6 @@ Tóm tắt cấu hình benchmark đã dùng trong @sec:benchmark nhằm giúp vi
 - Các thước đo chính gồm: `Average Runtime`, `Relative Residual Error`, `Solution Error` và `Condition Number`.
 
 == Bảng số liệu benchmark
-
 #figure(
   kind: table,
   table(
@@ -26,7 +55,7 @@ Tóm tắt cấu hình benchmark đã dùng trong @sec:benchmark nhằm giúp vi
     align: (center, center, center, center),
     stroke: 0.5pt + title_color.lighten(50%),
     fill: (col, row) => if row == 0 { title_color } else if calc.even(row) { white } else { title_color.lighten(95%) },
-    inset: 10pt,
+    inset: 7pt,
 
     table.header(
       [*#text(white)[Kích thước $n$]*],
@@ -51,7 +80,7 @@ Tóm tắt cấu hình benchmark đã dùng trong @sec:benchmark nhằm giúp vi
     align: (center, center, center, center),
     stroke: 0.5pt + title_color.lighten(50%),
     fill: (col, row) => if row == 0 { title_color } else if calc.even(row) { white } else { title_color.lighten(95%) },
-    inset: 10pt,
+    inset: 7pt,
 
     table.header(
       [*#text(white)[Kích thước $n$]*],
@@ -69,7 +98,7 @@ Tóm tắt cấu hình benchmark đã dùng trong @sec:benchmark nhằm giúp vi
   caption: [Sai số tương đối trên ma trận chéo trội theo kích thước $n$]
 ) <tbl:residual-full>
 
-#v(1em)
+#v(0.6em)
 
 #figure(
   kind: table,
@@ -78,7 +107,7 @@ Tóm tắt cấu hình benchmark đã dùng trong @sec:benchmark nhằm giúp vi
     align: (center, center, center, center, center),
     stroke: 0.5pt + title_color.lighten(50%),
     fill: (col, row) => if row == 0 { title_color } else if calc.even(row) { white } else { title_color.lighten(95%) },
-    inset: 8pt,
+    inset: 6pt,
 
     table.header(
       [*#text(white)[$n$]*],
@@ -98,7 +127,7 @@ Tóm tắt cấu hình benchmark đã dùng trong @sec:benchmark nhằm giúp vi
   caption: [Condition number và sai số nghiệm trên ma trận Hilbert]
 ) <tbl:hilbert-full>
 
-#v(1em)
+#v(0.6em)
 
 #figure(
   kind: table,
@@ -107,7 +136,7 @@ Tóm tắt cấu hình benchmark đã dùng trong @sec:benchmark nhằm giúp vi
     align: (center, center, center, center, center),
     stroke: 0.5pt + title_color.lighten(50%),
     fill: (col, row) => if row == 0 { title_color } else if calc.even(row) { white } else { title_color.lighten(95%) },
-    inset: 8pt,
+    inset: 6pt,
 
     table.header(
       [*#text(white)[$n$]*],
