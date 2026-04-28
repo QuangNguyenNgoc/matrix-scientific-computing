@@ -12,19 +12,39 @@
 
 - **Phần 3: Giải hệ phương trình và phân tích hiệu năng** - So sánh các giải thuật trực tiếp (Gauss, LU) với phương pháp lặp (Gauss-Seidel) qua các bài đo đạc (benchmark). Phân tích mối quan hệ giữa số điều kiện (Condition Number) và độ tin cậy của nghiệm số.
 
+- **Report** - Được viết bằng Typst Rust, ghi chép thông tin báo cáo trong file `report.typ` và được xuất thành file `report.pdf` để dễ dàng theo dõi.
+
 ## Cấu trúc dự án
 
 ```
 Group_12/
-├── part1/              # Thuật toán khử Gauss và ứng dụng
-├── part2/              # Chéo hóa và phân rã ma trận SVD
-├── part3/              # Giải hệ phương trình và Benchmark
-├── notebooks/          # Demo Jupyter Notebook và phân tích dữ liệu
-├── tests/              # Hệ thống kiểm thử tự động
-├── docs/               # Tài liệu hướng dẫn
-├── report/             # Mã nguồn Typst cho báo cáo
-├── requirements.txt    # Các gói phụ thuộc cơ bản
-└── requirements-manim.txt  # Các gói cho Manim (Linux)
+├── part1/                          # Phép khử Gauss và ứng dụng
+│   ├── gaussian.py                 # Thuật toán Gauss với Partial Pivoting
+│   ├── determinant.py              # Tính định thức
+│   ├── inverse.py                  # Tính ma trận nghịch đảo
+│   ├── rank_basis.py               # Tính hạng và cơ sở
+│   ├── utils.py                    # Hàm tiện ích
+│   ├── test_part1.py               # Kiểm thử
+│   ├── part1_demo.ipynb            # Demo Jupyter
+│   └── README.md
+├── part2/                          # Phân rã ma trận và Manim
+│   ├── decomposition.py            # Phân rã Cholesky, QR, LU
+│   ├── diagonalization.py          # Chéo hóa và SVD
+│   ├── manim_scene.py              # Animation Manim
+│   ├── test.ipynb                  # Demo Jupyter
+│   ├── requirements-manim.txt      # Gói Manim (Linux)
+│   └── README.md
+├── part3/                          # Giải hệ phương trình và Benchmark
+│   ├── solvers.py                  # Giải pháp (Gauss, LU, Gauss-Seidel)
+│   ├── benchmark.py                # Đo hiệu năng
+│   ├── analysis.ipynb              # Phân tích kết quả
+│   ├── results/                    # Kết quả benchmark
+├── report/                         # Báo cáo (Typst)
+│   ├── report.typ                  # Main file code của báo cáo
+│   ├── report.pdf                  # File báo cáo theo dõi chính
+│   ├── chapters/
+├── requirements.txt                # Gói cơ bản
+└── README.md
 ```
 
 ## Cài đặt
@@ -70,12 +90,8 @@ Nhóm đã cài đặt Manim trên **Linux (WSL)** như một phương án làm 
 
 ## Thành viên nhóm
 
-- [Thành viên 1 - GitHub Link](https://github.com/username)
-- [Thành viên 2 - GitHub Link](https://github.com/username)
-- [Thành viên 3 - GitHub Link](https://github.com/username)
-
-## Tài liệu bổ sung
-
-- [Hướng dẫn cài đặt môi trường](docs/02%20-%20Environment%20Setup.md)
-- [Hướng dẫn đóng góp](docs/03%20-%20CONTRIBUTING.md)
-- [Tóm tắt yêu cầu](docs/Tóm%20tắt%20cơ%20bản%20yêu%20cầu.md)
+- Nguyễn Ngọc Quang - 24120127
+- Đinh Đức Hiếu - 24120002
+- Liên Trung Hiếu - 24120049
+- Trương Đình Nhật Huy - 24120064
+- Đặng Quang Tiến - 24120149
